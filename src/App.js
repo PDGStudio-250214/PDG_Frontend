@@ -1,11 +1,15 @@
-// src/App.js 수정
+// src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
+import 'moment/locale/ko';
 import Login from "./page/Login";
 import Calendar from "./page/Calendar";
+import ExpenseManager from "./page/ExpenseManager";
 
 const theme = createTheme({
     palette: {
@@ -33,7 +37,7 @@ const PrivateRoute = ({ children }) => {
     return children;
 };
 
-// 내부 라우트 컴포넌트 - useAuth가 여기서 사용되도록
+// 내부 라우트 컴포넌트
 const AppRoutes = () => {
     return (
         <Routes>
@@ -45,6 +49,13 @@ const AppRoutes = () => {
                     </Layout>
                 </PrivateRoute>
             } />
+            <Route path="/expenses" element={
+                <PrivateRoute>
+                    <Layout>
+                        <ExpenseManager />
+                    </Layout>
+                </PrivateRoute>
+            } />
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
@@ -53,11 +64,13 @@ const AppRoutes = () => {
 function App() {
     return (
         <ThemeProvider theme={theme}>
-            <AuthProvider>
-                <Router>
-                    <AppRoutes />
-                </Router>
-            </AuthProvider>
+            <LocalizationProvider dateAdapter={AdapterMoment}>
+                <AuthProvider>
+                    <Router>
+                        <AppRoutes />
+                    </Router>
+                </AuthProvider>
+            </LocalizationProvider>
         </ThemeProvider>
     );
 }
