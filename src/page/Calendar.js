@@ -268,6 +268,10 @@ const Calendar = () => {
                                                         backgroundColor: 'rgba(0, 0, 0, 0.04)'
                                                     }
                                                 }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEventClick(event);
+                                                }}
                                             >
                                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
                                                     <Box
@@ -286,9 +290,9 @@ const Calendar = () => {
                                                 <Typography variant="body2" color="text.secondary">
                                                     {moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}
                                                 </Typography>
-                                                {event.createdBy && (
+                                                {event.userName && (
                                                     <Typography variant="caption" color="text.secondary">
-                                                        작성자: {event.createdBy}
+                                                        작성자: {event.userName}
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -347,18 +351,37 @@ const Calendar = () => {
 
         const currentMonth = moment(date).month();
 
+        // 주 갯수 계산하여 cell 높이 조절
+        const weekCount = weeks.length;
+        const cellHeight = isMobile
+            ? (weekCount > 5 ? 60 : 75) // 모바일에서 높이 증가
+            : (weekCount > 5 ? 100 : 120); // 데스크톱에서 높이 증가
+
         // 요일 헤더
         const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
         return (
-            <Box sx={{ height: '100%', overflow: 'auto' }}>
+            <Box sx={{
+                height: '100%',
+                overflow: 'auto',
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
                 {/* 요일 헤더 */}
-                <Grid container sx={{ textAlign: 'center', py: 1, borderBottom: '1px solid #eee' }}>
+                <Grid container sx={{
+                    textAlign: 'center',
+                    py: isMobile ? 1.5 : 2, // 헤더 높이 증가
+                    borderBottom: '1px solid #eee',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1,
+                    bgcolor: 'background.paper'
+                }}>
                     {weekdays.map((day, idx) => (
                         <Grid item xs={12/7} key={idx} sx={{
                             color: idx === 0 ? 'error.main' : idx === 6 ? 'primary.main' : 'text.primary',
                             fontWeight: 'bold',
-                            fontSize: '0.9rem'
+                            fontSize: isMobile ? '0.85rem' : '1rem' // 폰트 크기 증가
                         }}>
                             {day}
                         </Grid>
@@ -366,88 +389,109 @@ const Calendar = () => {
                 </Grid>
 
                 {/* 달력 내용 */}
-                {weeks.map((week, weekIdx) => (
-                    <Grid container key={weekIdx} sx={{
-                        borderBottom: weekIdx < weeks.length - 1 ? '1px solid #f0f0f0' : 'none',
-                        minHeight: isMobile ? '75px' : '100px',
-                    }}>
-                        {week.map((day, dayIdx) => {
-                            const dateStr = day.format('YYYY-MM-DD');
-                            const isToday = day.isSame(moment(), 'day');
-                            const isCurrentMonth = day.month() === currentMonth;
-                            const dayEvents = eventsByDate[dateStr] || [];
+                <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+                    {weeks.map((week, weekIdx) => (
+                        <Grid container key={weekIdx} sx={{
+                            borderBottom: weekIdx < weeks.length - 1 ? '1px solid #f0f0f0' : 'none',
+                            height: cellHeight,
+                            minHeight: isMobile ? '60px' : '100px', // 최소 높이 증가
+                        }}>
+                            {week.map((day, dayIdx) => {
+                                const dateStr = day.format('YYYY-MM-DD');
+                                const isToday = day.isSame(moment(), 'day');
+                                const isCurrentMonth = day.month() === currentMonth;
+                                const dayEvents = eventsByDate[dateStr] || [];
 
-                            return (
-                                <Grid
-                                    item
-                                    xs={12/7}
-                                    key={dayIdx}
-                                    sx={{
-                                        borderRight: dayIdx < 6 ? '1px solid #f0f0f0' : 'none',
-                                        p: 0.5,
-                                        backgroundColor: isToday ? 'rgba(25, 118, 210, 0.05)' : 'transparent',
-                                        color: !isCurrentMonth ? 'text.disabled' :
-                                            dayIdx === 0 ? 'error.main' :
-                                                dayIdx === 6 ? 'primary.main' : 'text.primary',
-                                        cursor: 'pointer',
-                                        position: 'relative',
-                                        '&:hover': {
-                                            backgroundColor: 'rgba(0, 0, 0, 0.02)'
-                                        }
-                                    }}
-                                    onClick={() => handleDateClick(day)}
-                                >
-                                    {/* 날짜 표시 */}
-                                    <Box sx={{
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        width: isToday ? '24px' : 'auto',
-                                        height: isToday ? '24px' : 'auto',
-                                        borderRadius: isToday ? '50%' : 'none',
-                                        backgroundColor: isToday ? 'primary.main' : 'transparent',
-                                        color: isToday ? 'white' : 'inherit',
-                                        mb: 0.5,
-                                        fontWeight: isToday || day.date() === 1 ? 'bold' : 'normal',
-                                        fontSize: '0.9rem'
-                                    }}>
-                                        {day.date()}
-                                    </Box>
+                                return (
+                                    <Grid
+                                        item
+                                        xs={12/7}
+                                        key={dayIdx}
+                                        sx={{
+                                            borderRight: dayIdx < 6 ? '1px solid #f0f0f0' : 'none',
+                                            p: 0.5,
+                                            backgroundColor: isToday ? 'rgba(25, 118, 210, 0.05)' : 'transparent',
+                                            color: !isCurrentMonth ? 'text.disabled' :
+                                                dayIdx === 0 ? 'error.main' :
+                                                    dayIdx === 6 ? 'primary.main' : 'text.primary',
+                                            cursor: 'pointer',
+                                            position: 'relative',
+                                            height: '100%',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(0, 0, 0, 0.02)'
+                                            },
+                                            overflow: 'hidden'
+                                        }}
+                                        onClick={() => handleDateClick(day)}
+                                    >
+                                        {/* 날짜 표시 */}
+                                        <Box sx={{
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            width: isToday ? '24px' : 'auto', // 크기 증가
+                                            height: isToday ? '24px' : 'auto', // 크기 증가
+                                            borderRadius: isToday ? '50%' : 'none',
+                                            backgroundColor: isToday ? 'primary.main' : 'transparent',
+                                            color: isToday ? 'white' : 'inherit',
+                                            mb: 0.75, // 마진 증가
+                                            fontWeight: isToday || day.date() === 1 ? 'bold' : 'normal',
+                                            fontSize: isMobile ? '0.85rem' : '1rem' // 폰트 크기 증가
+                                        }}>
+                                            {day.date()}
+                                        </Box>
 
-                                    {/* 일정 표시 */}
-                                    <Box sx={{
-                                        overflow: 'hidden',
-                                        maxHeight: isMobile ? '40px' : '80px'
-                                    }}>
-                                        {dayEvents.slice(0, 3).map((event, idx) => (
-                                            <Box
-                                                key={idx}
-                                                sx={{
-                                                    backgroundColor: event.color || defaultColor,
-                                                    color: 'white',
-                                                    borderRadius: '3px',
-                                                    fontSize: '0.7rem',
-                                                    p: '1px 4px',
-                                                    mb: 0.5,
-                                                    whiteSpace: 'nowrap',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis'
-                                                }}
-                                            >
-                                                {event.title}
-                                            </Box>
-                                        ))}
-                                        {dayEvents.length > 3 && (
-                                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-                                                +{dayEvents.length - 3}개 더보기
-                                            </Typography>
-                                        )}
-                                    </Box>
-                                </Grid>
-                            );
-                        })}
-                    </Grid>
-                ))}
+                                        {/* 일정 표시 */}
+                                        <Box sx={{
+                                            overflow: 'auto',
+                                            flexGrow: 1,
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '3px' // 간격 증가
+                                        }}>
+                                            {dayEvents.slice(0, isMobile ? 3 : 4).map((event, idx) => ( // 표시 개수 증가
+                                                <Box
+                                                    key={idx}
+                                                    sx={{
+                                                        backgroundColor: event.color || defaultColor,
+                                                        color: 'white',
+                                                        borderRadius: '3px',
+                                                        fontSize: isMobile ? '0.7rem' : '0.75rem', // 폰트 크기 증가
+                                                        p: '2px 4px', // 패딩 증가
+                                                        height: 'auto',
+                                                        minHeight: isMobile ? '18px' : '22px', // 높이 증가
+                                                        lineHeight: isMobile ? '18px' : '22px', // 줄 높이 증가
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        display: 'block'
+                                                    }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEventClick(event);
+                                                    }}
+                                                >
+                                                    {event.title}
+                                                </Box>
+                                            ))}
+                                            {dayEvents.length > (isMobile ? 3 : 4) && ( // 표시 개수에 맞게 조정
+                                                <Typography variant="caption" sx={{
+                                                    color: 'text.secondary',
+                                                    fontSize: '0.7rem', // 폰트 크기 증가
+                                                    mt: 0.5
+                                                }}>
+                                                    +{dayEvents.length - (isMobile ? 3 : 4)}개
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    </Grid>
+                                );
+                            })}
+                        </Grid>
+                    ))}
+                </Box>
             </Box>
         );
     };
@@ -520,7 +564,6 @@ const Calendar = () => {
         }
     }, [user, fetchEvents]);
 
-// 상세 페이지에서 일정 클릭 핸들러
     // 상세 페이지에서 일정 클릭 핸들러
     const handleEventClick = (event) => {
         setSelectedEvent(event);
@@ -721,7 +764,8 @@ const Calendar = () => {
                 p: isMobile ? 1 : 3,
                 height: 'calc(100vh - 64px)',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                overflow: 'hidden'
             }}>
                 {/* 보증금 정보 */}
                 <Paper sx={{
@@ -761,12 +805,16 @@ const Calendar = () => {
                 <Paper sx={{
                     p: isMobile ? 1 : 2,
                     flexGrow: 1,
-                    borderRadius: isMobile ? 1 : 2
+                    borderRadius: isMobile ? 1 : 2,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column'
                 }}>
                     <Box sx={{
                         display: 'flex',
                         flexDirection: 'column',
-                        height: '100%'
+                        height: '100%',
+                        overflow: 'hidden'
                     }}>
                         {/* 뷰에 따른 컴포넌트 렌더링 */}
                         <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>

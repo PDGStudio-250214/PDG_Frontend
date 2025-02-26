@@ -9,23 +9,21 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // 자동 로그인 처리
     useEffect(() => {
         const initAuth = async () => {
             const token = localStorage.getItem('token');
-            console.log('Initializing auth, token exists:', !!token);
-
             if (token) {
                 try {
                     // API 기본 헤더에 토큰 설정
                     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-                    const response = await api.post('/auth/auto-login', null, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+                    // 자동 로그인 요청
+                    const response = await api.post('/auth/auto-login');
 
                     console.log('Auto-login response:', response.data);
 
-                    if (response.data.success) {
+                    if (response.data && response.data.success) {
                         setUser(response.data.user);
                         console.log('User authenticated:', response.data.user);
                     } else {
@@ -45,28 +43,40 @@ export const AuthProvider = ({ children }) => {
         initAuth();
     }, []);
 
-    const login = async (data) => {
+    // 로그인 함수
+    const login = async (loginData) => {
         try {
-            setUser(data.user);
-            // 토큰을 명시적으로 저장
-            if (data.access_token) {
-                localStorage.setItem('token', data.access_token);
-                // API 인스턴스의 기본 헤더에 토큰 설정
-                api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
+            const response = await api.post('/auth/login', loginData);
+
+            if (response.data && response.data.success) {
+                const { user, access_token } = response.data;
+
+                // 사용자 정보 저장
+                setUser(user);
+
+                // 토큰 저장
+                localStorage.setItem('token', access_token);
+
+                // API 기본 헤더에 토큰 설정
+                api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+
+                return true;
             }
-            return true;
+            return false;
         } catch (error) {
             console.error('Login error:', error);
-            throw new Error('로그인 처리 중 오류가 발생했습니다.');
+            return false;
         }
     };
 
+    // 로그아웃 함수
     const logout = () => {
         setUser(null);
         localStorage.removeItem('token');
         delete api.defaults.headers.common['Authorization'];
     };
 
+    // 로딩 화면
     if (loading) {
         return (
             <Box
