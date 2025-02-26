@@ -9,7 +9,6 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // src/contexts/AuthContext.js - useEffect 부분 수정
     useEffect(() => {
         const initAuth = async () => {
             const token = localStorage.getItem('token');
@@ -65,6 +64,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         setUser(null);
         localStorage.removeItem('token');
+        delete api.defaults.headers.common['Authorization'];
     };
 
     if (loading) {
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     return (
-        <AuthContext.Provider value={{ user, login, logout }}>
+        <AuthContext.Provider value={{ user, login, logout, loading }}>
             {children}
         </AuthContext.Provider>
     );
