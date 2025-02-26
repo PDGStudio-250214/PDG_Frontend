@@ -11,18 +11,20 @@ import {
     IconButton,
     Typography,
     useMediaQuery,
-    useTheme
+    useTheme,
+    Chip
 } from '@mui/material';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
-import { Close, Delete } from '@mui/icons-material';
+import { Close, Delete, Lock, Edit } from '@mui/icons-material';
 import moment from 'moment';
 import 'moment/locale/ko';
 
-const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelete, isMobile: propIsMobile }) => {
+const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelete, isMobile: propIsMobile, currentUser }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [startTime, setStartTime] = useState(moment().startOf('hour'));
     const [endTime, setEndTime] = useState(moment().startOf('hour').add(1, 'hour'));
+    const [isReadOnly, setIsReadOnly] = useState(false);
 
     // 테마와 미디어 쿼리
     const theme = useTheme();
@@ -33,25 +35,32 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
     // 선택한 날짜를 기준으로 설정
     const selectedDate = selectedSlot ? moment(selectedSlot.start).startOf('day') : moment().startOf('day');
 
-    // 초기값 설정
+// 초기값 설정 및 읽기 전용 모드 체크
     useEffect(() => {
-        if (mode === 'edit' && event) {
+        if ((mode === 'edit' || mode === 'view') && event) {
             setTitle(event.title || '');
             setDescription(event.description || '');
-            // 시간만 설정
             setStartTime(moment(event.start));
             setEndTime(moment(event.end));
+
+            // mode가 'view'이거나 isOwner가 false면 읽기 전용
+            setIsReadOnly(mode === 'view' || !event.isOwner);
+
+            console.log('EventDialog mode:', mode, 'isOwner:', event.isOwner, 'setting isReadOnly:', mode === 'view' || !event.isOwner);
         } else if (mode === 'create' && selectedSlot) {
             setTitle('');
             setDescription('');
             // 선택한 슬롯의 시간으로 설정
             setStartTime(moment(selectedSlot.start));
             setEndTime(moment(selectedSlot.end || moment(selectedSlot.start).add(1, 'hour')));
+            setIsReadOnly(false);
         }
-    }, [mode, event, selectedSlot, open]);
+    }, [mode, event, selectedSlot, open, currentUser]);
 
     // 저장 처리
     const handleSave = () => {
+        if (isReadOnly) return;
+
         // 선택한 날짜와 시간을 결합
         const start = moment(selectedDate)
             .hour(startTime.hour())
@@ -78,6 +87,14 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
         onSave(eventData);
     };
 
+// 읽기 전용 모드 토글
+    const toggleReadOnly = () => {
+        // 본인의 일정인 경우에만 토글 가능
+        if (event?.userId === currentUser?.id) {
+            setIsReadOnly(!isReadOnly);
+        }
+    };
+
     return (
         <Dialog
             open={open}
@@ -97,11 +114,27 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
             }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant={isMobile ? "h6" : "h5"}>
-                        {mode === 'create' ? '새 일정 추가' : '일정 수정'}
+                        {mode === 'create' ? '새 일정 추가' : isReadOnly ? '일정 상세' : '일정 수정'}
+                        {isReadOnly && mode === 'edit' && (
+                            <Chip
+                                icon={<Lock fontSize="small" />}
+                                label="읽기 전용"
+                                size="small"
+                                color="default"
+                                sx={{ ml: 1, fontSize: '0.7rem' }}
+                            />
+                        )}
                     </Typography>
-                    <IconButton onClick={onClose} size="small" edge="end">
-                        <Close />
-                    </IconButton>
+                    <Box>
+                        {mode === 'edit' && event?.userId === currentUser?.id && (
+                            <IconButton onClick={toggleReadOnly} size="small" sx={{ mr: 1 }}>
+                                {isReadOnly ? <Edit fontSize="small" /> : <Lock fontSize="small" />}
+                            </IconButton>
+                        )}
+                        <IconButton onClick={onClose} size="small" edge="end">
+                            <Close />
+                        </IconButton>
+                    </Box>
                 </Box>
             </DialogTitle>
 
@@ -133,6 +166,10 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                         size={isMobile ? "small" : "medium"}
                         variant="outlined"
                         autoFocus
+                        disabled={isReadOnly}
+                        InputProps={{
+                            readOnly: isReadOnly
+                        }}
                     />
 
                     <TextField
@@ -144,6 +181,10 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                         onChange={(e) => setDescription(e.target.value)}
                         size={isMobile ? "small" : "medium"}
                         variant="outlined"
+                        disabled={isReadOnly}
+                        InputProps={{
+                            readOnly: isReadOnly
+                        }}
                     />
 
                     <Box sx={{ mt: 1, mb: 0.5 }}>
@@ -160,13 +201,17 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                         <TimePicker
                             label="시작 시간"
                             value={startTime}
-                            onChange={setStartTime}
+                            onChange={isReadOnly ? undefined : setStartTime}
                             ampm={false}
                             minutesStep={15}
+                            readOnly={isReadOnly}
                             slotProps={{
                                 textField: {
                                     fullWidth: true,
-                                    size: isMobile ? "small" : "medium"
+                                    size: isMobile ? "small" : "medium",
+                                    InputProps: {
+                                        readOnly: isReadOnly
+                                    }
                                 }
                             }}
                             sx={{
@@ -179,13 +224,17 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                         <TimePicker
                             label="종료 시간"
                             value={endTime}
-                            onChange={setEndTime}
+                            onChange={isReadOnly ? undefined : setEndTime}
                             ampm={false}
                             minutesStep={15}
+                            readOnly={isReadOnly}
                             slotProps={{
                                 textField: {
                                     fullWidth: true,
-                                    size: isMobile ? "small" : "medium"
+                                    size: isMobile ? "small" : "medium",
+                                    InputProps: {
+                                        readOnly: isReadOnly
+                                    }
                                 }
                             }}
                             sx={{
@@ -196,8 +245,8 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                         />
                     </Box>
 
-                    {/* 모바일에서 시간 빠른 선택 버튼 */}
-                    {isMobile && (
+                    {/* 모바일에서 시간 빠른 선택 버튼 (읽기 전용이 아닐 때만) */}
+                    {isMobile && !isReadOnly && (
                         <Box sx={{ mt: 1 }}>
                             <Typography variant="body2" color="text.secondary" gutterBottom>
                                 빠른 시간 선택:
@@ -227,14 +276,14 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
             <DialogActions sx={{
                 px: isMobile ? 2 : 3,
                 py: isMobile ? 1.5 : 2,
-                justifyContent: mode === 'edit' ? 'space-between' : 'flex-end',
+                justifyContent: (mode === 'edit' && !isReadOnly) ? 'space-between' : 'flex-end',
                 position: 'sticky',
                 bottom: 0,
                 zIndex: 1200,
                 backgroundColor: 'white',
                 borderTop: '1px solid #eee'
             }}>
-                {mode === 'edit' && (
+                {mode === 'edit' && !isReadOnly && event?.userId === currentUser?.id && (
                     <Button
                         onClick={() => onDelete(event.id)}
                         color="error"
@@ -250,16 +299,18 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                         size={isMobile ? "small" : "medium"}
                         sx={{ mr: 1 }}
                     >
-                        취소
+                        {isReadOnly ? '닫기' : '취소'}
                     </Button>
-                    <Button
-                        onClick={handleSave}
-                        variant="contained"
-                        disabled={!title}
-                        size={isMobile ? "small" : "medium"}
-                    >
-                        저장
-                    </Button>
+                    {!isReadOnly && (
+                        <Button
+                            onClick={handleSave}
+                            variant="contained"
+                            disabled={!title}
+                            size={isMobile ? "small" : "medium"}
+                        >
+                            저장
+                        </Button>
+                    )}
                 </Box>
             </DialogActions>
         </Dialog>
