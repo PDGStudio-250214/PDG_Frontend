@@ -21,10 +21,9 @@ const Layout = ({ children }) => {
                         일정 관리
                     </Typography>
                     {user && (
-                        <>
-                            <Typography sx={{ mr: 2 }}>{user.email}</Typography>
-                            <Button color="inherit" onClick={handleLogout}>로그아웃</Button>
-                        </>
+                        <Typography variant="body2" sx={{ mr: 2 }}>
+                            {user.name || user.email}
+                        </Typography>
                     )}
                 </Toolbar>
             </AppBar>

@@ -35,7 +35,7 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
     // 선택한 날짜를 기준으로 설정
     const selectedDate = selectedSlot ? moment(selectedSlot.start).startOf('day') : moment().startOf('day');
 
-// 초기값 설정 및 읽기 전용 모드 체크
+    // 초기값 설정 및 읽기 전용 모드 체크
     useEffect(() => {
         if ((mode === 'edit' || mode === 'view') && event) {
             setTitle(event.title || '');
@@ -87,12 +87,28 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
         onSave(eventData);
     };
 
-// 읽기 전용 모드 토글
+    // 읽기 전용 모드 토글
     const toggleReadOnly = () => {
         // 본인의 일정인 경우에만 토글 가능
         if (event?.userId === currentUser?.id) {
             setIsReadOnly(!isReadOnly);
         }
+    };
+
+    console.log('EventDialog rendering with:', { isReadOnly, mode, event, currentUser });
+
+    // 작성자 정보 가져오기
+    const getCreatorName = () => {
+        if (!event) return '';
+
+        // name 필드가 있으면 우선 사용
+        if (event.userName) return event.userName;
+        if (event.createdBy) return event.createdBy;
+
+        // 이메일을 보여주는 것보다 이름이 더 중요
+        if (event.userEmail) return event.userEmail;
+
+        return '알 수 없음';
     };
 
     return (
@@ -148,11 +164,11 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                     flexDirection: 'column',
                     gap: isMobile ? 1.5 : 2
                 }}>
-                    {/* 기존 작성자 표시 (수정 모드일 때만) */}
-                    {mode === 'edit' && event?.createdBy && (
+                    {/* 작성자 표시 (보기/수정 모드일 때만) */}
+                    {(mode === 'edit' || mode === 'view') && event && (
                         <Box sx={{ mb: 0.5 }}>
                             <Typography variant="subtitle2" color="text.secondary">
-                                작성자: {event.createdBy}
+                                작성자: {getCreatorName()}
                             </Typography>
                         </Box>
                     )}

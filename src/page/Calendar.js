@@ -49,9 +49,55 @@ const localizer = momentLocalizer(moment);
 
 // 사용자별 색상 설정
 const userColors = {
-    'pizza@test.com': '#FF5722',
-    '1bfish106@test.com': '#2196F3',
-    'hosk2014@test.com': '#4CAF50'
+    '승혜': '#FF5722',  // pizza
+    'pizza@test.com': '#FF5722',  // 이메일로도 매핑
+    '가연': '#2196F3',  // 1bfish106
+    '1bfish106@test.com': '#2196F3',  // 이메일로도 매핑
+    '석린': '#4CAF50',  // hosk2014
+    'hosk2014@test.com': '#4CAF50'  // 이메일로도 매핑
+};
+
+
+const getUserColor = (username) => {
+    console.log('색상 매핑 중:', username);
+
+    // 직접 매핑 먼저 시도
+    if (userColors[username]) {
+        return userColors[username];
+    }
+
+    // 이름이 포함된 키 찾기 (부분 매칭)
+    const partialMatch = Object.keys(userColors).find(key =>
+        username.includes(key) || key.includes(username)
+    );
+
+    if (partialMatch) {
+        return userColors[partialMatch];
+    }
+
+    // 이메일 패턴 매칭 (예: "이름 <이메일>" 형식)
+    if (username.includes('@')) {
+        const emailPart = username.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+        if (emailPart && emailPart[0]) {
+            const email = emailPart[0];
+            if (userColors[email]) {
+                return userColors[email];
+            }
+
+            // 이메일의 @ 앞부분을 기준으로 매칭 시도
+            const emailPrefix = email.split('@')[0];
+            for (const key in userColors) {
+                if (key.includes(emailPrefix) || emailPrefix.includes(key)) {
+                    return userColors[key];
+                }
+            }
+        }
+    }
+
+    // 기본 색상 반환 (사용자별로 다른 기본 색상)
+    const hash = username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const defaultColors = ['#9C27B0', '#673AB7', '#3F51B5', '#F44336', '#E91E63'];
+    return defaultColors[hash % defaultColors.length];
 };
 
 // 기본 색상
@@ -438,16 +484,10 @@ const Calendar = () => {
                 return;
             }
 
-            // 서버에서 받은 일정 데이터 변환
             const formattedEvents = scheduleData.map(event => {
-                // 사용자 이메일 확인 (이벤트 생성자 또는 사용자 객체에서)
-                const userEmail = event.user?.email || event.userEmail || 'unknown';
+                // 사용자 이름 우선 사용, 없으면 이메일 사용
+                const userName = event.user?.name || event.userName || event.user?.email || event.userEmail || 'Unknown';
                 const userId = event.user?.id || event.userId || null;
-
-                // 문자열로 변환하여 비교 (또는 숫자로 변환하여 비교)
-                const isOwner = userId !== null && user?.id !== null && String(userId) === String(user?.id);
-
-                console.log('Processing event:', event.title, 'User ID:', userId, 'Current user ID:', user?.id, 'Is owner:', isOwner);
 
                 return {
                     id: event.id,
@@ -455,14 +495,15 @@ const Calendar = () => {
                     description: event.description || '',
                     start: new Date(event.startDate || event.start),
                     end: new Date(event.endDate || event.end),
-                    // 사용자별 색상 지정
-                    color: userColors[userEmail] || defaultColor,
+                    // 사용자 이름 기반 색상 지정
+                    color: getUserColor(userName),
                     // 사용자 식별자 저장
-                    userEmail: userEmail,
+                    userName: userName,
                     userId: userId,
-                    createdBy: event.user?.name || event.userName || userEmail,
+                    // createdBy 필드 명시적 설정
+                    createdBy: userName,
                     // 현재 로그인한 사용자가 작성한 일정인지 여부
-                    isOwner: isOwner
+                    isOwner: userId === user?.id
                 };
             });
 
@@ -539,10 +580,9 @@ const Calendar = () => {
                         description: createdSchedule.description || eventData.description || '',
                         start: new Date(createdSchedule.startDate || eventData.start),
                         end: new Date(createdSchedule.endDate || eventData.end),
-                        color: userColors[user?.email] || defaultColor,
-                        userEmail: user?.email,
+                        color: getUserColor(user?.name),
+                        userName: user?.name,
                         userId: user?.id,
-                        createdBy: user?.name || user?.email,
                         isOwner: true
                     };
 
@@ -850,7 +890,7 @@ const Calendar = () => {
                                                                 </Typography>
                                                             )}
                                                             <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                                                                작성자: {event.createdBy}
+                                                                작성자: {event.userName || event.createdBy || '알 수 없음'}
                                                             </Typography>
                                                         </>
                                                     }
