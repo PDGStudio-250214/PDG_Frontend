@@ -9,18 +9,26 @@ import {
     Button,
     Box,
     IconButton,
-    Typography
+    Typography,
+    useMediaQuery,
+    useTheme
 } from '@mui/material';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { Close, Delete } from '@mui/icons-material';
 import moment from 'moment';
 import 'moment/locale/ko';
 
-const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelete }) => {
+const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelete, isMobile: propIsMobile }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [startTime, setStartTime] = useState(moment().startOf('hour'));
     const [endTime, setEndTime] = useState(moment().startOf('hour').add(1, 'hour'));
+
+    // 테마와 미디어 쿼리
+    const theme = useTheme();
+    const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+    // 부모로부터 전달받은 isMobile 값을 우선 사용하고, 없으면 미디어 쿼리 결과 사용
+    const isMobile = propIsMobile !== undefined ? propIsMobile : isSmallScreen;
 
     // 선택한 날짜를 기준으로 설정
     const selectedDate = selectedSlot ? moment(selectedSlot.start).startOf('day') : moment().startOf('day');
@@ -76,21 +84,40 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
             onClose={onClose}
             fullWidth
             maxWidth="sm"
+            fullScreen={isMobile} // 모바일에서는 전체 화면으로
         >
-            <DialogTitle>
+            <DialogTitle sx={{
+                px: isMobile ? 2 : 3,
+                pt: isMobile ? 2 : 3,
+                position: 'sticky',
+                top: 0,
+                zIndex: 1200,
+                backgroundColor: 'white',
+                borderBottom: '1px solid #eee'
+            }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
-                    {mode === 'create' ? '새 일정 추가' : '일정 수정'}
-                    <IconButton onClick={onClose} size="small">
+                    <Typography variant={isMobile ? "h6" : "h5"}>
+                        {mode === 'create' ? '새 일정 추가' : '일정 수정'}
+                    </Typography>
+                    <IconButton onClick={onClose} size="small" edge="end">
                         <Close />
                     </IconButton>
                 </Box>
             </DialogTitle>
 
-            <DialogContent dividers>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 1 }}>
+            <DialogContent dividers sx={{
+                px: isMobile ? 2 : 3,
+                py: 2,
+                overflowY: 'auto'
+            }}>
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: isMobile ? 1.5 : 2
+                }}>
                     {/* 기존 작성자 표시 (수정 모드일 때만) */}
                     {mode === 'edit' && event?.createdBy && (
-                        <Box sx={{ mb: 1 }}>
+                        <Box sx={{ mb: 0.5 }}>
                             <Typography variant="subtitle2" color="text.secondary">
                                 작성자: {event.createdBy}
                             </Typography>
@@ -103,31 +130,49 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         required
+                        size={isMobile ? "small" : "medium"}
+                        variant="outlined"
+                        autoFocus
                     />
 
                     <TextField
                         label="설명"
                         fullWidth
                         multiline
-                        rows={3}
+                        rows={isMobile ? 2 : 3}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
+                        size={isMobile ? "small" : "medium"}
+                        variant="outlined"
                     />
 
-                    <Box sx={{ mt: 2, mb: 1 }}>
-                        <Typography variant="subtitle1">
-                            선택한 날짜: {selectedDate.format('YYYY년 MM월 DD일')}
+                    <Box sx={{ mt: 1, mb: 0.5 }}>
+                        <Typography variant={isMobile ? "body2" : "subtitle1"} color="text.secondary">
+                            날짜: {selectedDate.format('YYYY년 MM월 DD일 (ddd)')}
                         </Typography>
                     </Box>
 
-                    <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        gap: 2
+                    }}>
                         <TimePicker
                             label="시작 시간"
                             value={startTime}
                             onChange={setStartTime}
                             ampm={false}
+                            minutesStep={15}
                             slotProps={{
-                                textField: { fullWidth: true }
+                                textField: {
+                                    fullWidth: true,
+                                    size: isMobile ? "small" : "medium"
+                                }
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 1
+                                }
                             }}
                         />
 
@@ -136,33 +181,86 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                             value={endTime}
                             onChange={setEndTime}
                             ampm={false}
+                            minutesStep={15}
                             slotProps={{
-                                textField: { fullWidth: true }
+                                textField: {
+                                    fullWidth: true,
+                                    size: isMobile ? "small" : "medium"
+                                }
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 1
+                                }
                             }}
                         />
                     </Box>
+
+                    {/* 모바일에서 시간 빠른 선택 버튼 */}
+                    {isMobile && (
+                        <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                빠른 시간 선택:
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                {[0, 1, 2, 3].map(hours => (
+                                    <Button
+                                        key={hours}
+                                        variant="outlined"
+                                        size="small"
+                                        onClick={() => {
+                                            const start = moment().startOf('hour').add(hours, 'hours');
+                                            setStartTime(start);
+                                            setEndTime(moment(start).add(1, 'hour'));
+                                        }}
+                                        sx={{ minWidth: '60px', fontSize: '0.7rem' }}
+                                    >
+                                        {moment().startOf('hour').add(hours, 'hours').format('HH:mm')}
+                                    </Button>
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
                 </Box>
             </DialogContent>
 
-            <DialogActions>
+            <DialogActions sx={{
+                px: isMobile ? 2 : 3,
+                py: isMobile ? 1.5 : 2,
+                justifyContent: mode === 'edit' ? 'space-between' : 'flex-end',
+                position: 'sticky',
+                bottom: 0,
+                zIndex: 1200,
+                backgroundColor: 'white',
+                borderTop: '1px solid #eee'
+            }}>
                 {mode === 'edit' && (
                     <Button
                         onClick={() => onDelete(event.id)}
                         color="error"
                         startIcon={<Delete />}
-                        sx={{ mr: 'auto' }}
+                        size={isMobile ? "small" : "medium"}
                     >
                         삭제
                     </Button>
                 )}
-                <Button onClick={onClose}>취소</Button>
-                <Button
-                    onClick={handleSave}
-                    variant="contained"
-                    disabled={!title}
-                >
-                    저장
-                </Button>
+                <Box>
+                    <Button
+                        onClick={onClose}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{ mr: 1 }}
+                    >
+                        취소
+                    </Button>
+                    <Button
+                        onClick={handleSave}
+                        variant="contained"
+                        disabled={!title}
+                        size={isMobile ? "small" : "medium"}
+                    >
+                        저장
+                    </Button>
+                </Box>
             </DialogActions>
         </Dialog>
     );

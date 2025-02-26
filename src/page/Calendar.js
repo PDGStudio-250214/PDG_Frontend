@@ -1,11 +1,25 @@
 // src/pages/Calendar.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/ko';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { Box, Paper, Tabs, Tab, Fab, Typography } from '@mui/material';
+import {
+    Box,
+    Paper,
+    Tabs,
+    Tab,
+    Fab,
+    Typography,
+    useMediaQuery,
+    useTheme,
+    IconButton,
+    Button
+} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import TodayIcon from '@mui/icons-material/Today';
 import { useAuth } from '../contexts/AuthContext';
 import EventDialog from '../components/EventDialog';
 import api from '../api/config';
@@ -34,9 +48,119 @@ const Calendar = () => {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [dialogMode, setDialogMode] = useState('create');
+    const [currentDate, setCurrentDate] = useState(new Date());
+
+    // 모바일 환경 감지
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    // 커스텀 주간 뷰 컴포넌트
+    const CustomWeekView = ({ date, localizer }) => {
+        // 현재 주간의 시작일과 종료일 계산
+        const start = moment(date).startOf('week');
+        const end = moment(date).endOf('week');
+
+        // 현재 주간에 해당하는 날짜들 생성 (7일)
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            days.push(moment(start).add(i, 'days'));
+        }
+
+        // 이벤트를 날짜별로 그룹화
+        const eventsByDay = {};
+        events.forEach(event => {
+            const eventDate = moment(event.start).format('YYYY-MM-DD');
+            if (!eventsByDay[eventDate]) {
+                eventsByDay[eventDate] = [];
+            }
+            eventsByDay[eventDate].push(event);
+        });
+
+        return (
+            <Box sx={{ height: '100%', overflow: 'auto', pt: 1 }}>
+                {days.map((day) => {
+                    const dateStr = day.format('YYYY-MM-DD');
+                    const dayEvents = eventsByDay[dateStr] || [];
+                    const isToday = day.isSame(moment(), 'day');
+
+                    return (
+                        <Box
+                            key={dateStr}
+                            sx={{
+                                mb: 2,
+                                backgroundColor: isToday ? 'rgba(25, 118, 210, 0.05)' : 'transparent',
+                                borderRadius: 1,
+                                border: isToday ? '1px solid rgba(25, 118, 210, 0.2)' : '1px solid #eee',
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    py: 1,
+                                    px: 2,
+                                    backgroundColor: isToday ? 'primary.main' : 'grey.100',
+                                    borderRadius: '4px 4px 0 0',
+                                    color: isToday ? 'white' : 'inherit',
+                                    fontWeight: isToday ? 'bold' : 'normal',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                {day.format('YYYY년 MM월 DD일 (ddd)')}
+                            </Box>
+
+                            {dayEvents.length === 0 ? (
+                                <Box sx={{ p: 2, color: 'text.secondary', fontSize: '0.9rem' }}>
+                                    일정이 없습니다
+                                </Box>
+                            ) : (
+                                dayEvents
+                                    .sort((a, b) => moment(a.start).valueOf() - moment(b.start).valueOf())
+                                    .map((event, idx) => (
+                                        <Box
+                                            key={idx}
+                                            sx={{
+                                                p: 2,
+                                                borderBottom: idx < dayEvents.length - 1 ? '1px solid #eee' : 'none',
+                                                cursor: 'pointer',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                                }
+                                            }}
+                                            onClick={() => handleSelectEvent(event)}
+                                        >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                                                <Box
+                                                    sx={{
+                                                        width: 10,
+                                                        height: 10,
+                                                        borderRadius: '50%',
+                                                        backgroundColor: event.color || defaultColor,
+                                                        mr: 1
+                                                    }}
+                                                />
+                                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                                    {event.title}
+                                                </Typography>
+                                            </Box>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}
+                                            </Typography>
+                                            {event.createdBy && (
+                                                <Typography variant="caption" color="text.secondary">
+                                                    작성자: {event.createdBy}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    ))
+                            )}
+                        </Box>
+                    );
+                })}
+            </Box>
+        );
+    };
 
     // 일정 조회
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -44,14 +168,10 @@ const Calendar = () => {
                 return;
             }
 
-            console.log('인증 토큰으로 일정 조회:', token.substring(0, 15) + '...');
-
             // 모든 일정을 조회하는 쿼리 파라미터 추가
             const response = await api.get('/schedules?all=true', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
-            console.log('서버 응답:', response);
 
             // 데이터 형식에 따라 처리
             let scheduleData = [];
@@ -67,7 +187,6 @@ const Calendar = () => {
 
             // 데이터가 있는지 확인
             if (scheduleData.length === 0) {
-                console.log('일정 데이터가 없습니다.');
                 setEvents([]);
                 return;
             }
@@ -91,20 +210,18 @@ const Calendar = () => {
                 };
             });
 
-            console.log('변환된 일정 데이터:', formattedEvents);
             setEvents(formattedEvents);
         } catch (error) {
             console.error('일정 조회 중 오류 발생:', error.response?.data || error.message);
         }
-    };
+    }, []);
 
     // 컴포넌트 마운트 시 일정 조회
     useEffect(() => {
         if (user) {
-            console.log('일정 데이터를 불러옵니다. 현재 사용자:', user);
             fetchEvents();
         }
-    }, [user]);
+    }, [user, fetchEvents]);
 
     // 일정 선택 핸들러
     const handleSelectEvent = (event) => {
@@ -134,8 +251,6 @@ const Calendar = () => {
                 endDate: eventData.end
             };
 
-            console.log('저장할 일정 데이터:', payload);
-
             let response;
 
             if (dialogMode === 'create') {
@@ -143,11 +258,9 @@ const Calendar = () => {
                 response = await api.post('/schedules', payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                console.log('생성된 일정:', response.data);
 
                 // 응답에서 일정 데이터 확인
                 const createdSchedule = response.data.schedule || response.data;
-                console.log('생성된 일정 데이터:', createdSchedule);
 
                 if (createdSchedule) {
                     // 새 일정을 상태에 바로 추가
@@ -162,7 +275,6 @@ const Calendar = () => {
                         createdBy: user?.name || user?.email
                     };
 
-                    console.log('이벤트 배열에 추가할 새 일정:', newEvent);
                     setEvents(prev => [...prev, newEvent]);
                 }
             } else {
@@ -170,7 +282,6 @@ const Calendar = () => {
                 response = await api.put(`/schedules/${selectedEvent.id}`, payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                console.log('수정된 일정:', response.data);
 
                 // 수정된 일정을 상태에서 업데이트
                 setEvents(prev => prev.map(event =>
@@ -189,7 +300,7 @@ const Calendar = () => {
             setDialogOpen(false);
 
             // 일정 다시 조회 (최신 데이터 확보를 위해)
-            setTimeout(() => fetchEvents(), 500); // 약간의 지연을 둠
+            setTimeout(() => fetchEvents(), 500);
         } catch (error) {
             console.error('일정 저장 중 오류 발생:', error.response?.data || error.message);
         }
@@ -221,7 +332,9 @@ const Calendar = () => {
                 opacity: 0.8,
                 color: 'white',
                 border: '0px',
-                display: 'block'
+                display: 'block',
+                fontSize: isMobile ? '0.7rem' : '0.9rem', // 모바일에서 글꼴 크기 줄임
+                padding: isMobile ? '2px 4px' : '2px 5px', // 모바일에서 패딩 조정
             }
         };
     };
@@ -230,86 +343,190 @@ const Calendar = () => {
     const formats = {
         eventTimeRangeFormat: ({ start, end }, culture, localizer) =>
             `${localizer.format(start, 'HH:mm', culture)} - ${localizer.format(end, 'HH:mm', culture)}`,
+        timeGutterFormat: (date, culture, localizer) =>
+            localizer.format(date, 'HH:mm', culture),
+        monthHeaderFormat: date => localizer.format(date, isMobile ? 'YYYY년 MM월' : 'YYYY년 MMMM', 'ko'),
+        dayHeaderFormat: date => localizer.format(date, isMobile ? 'M/D(ddd)' : 'YYYY년 MM월 DD일(ddd)', 'ko'),
+        dayRangeHeaderFormat: ({ start, end }) =>
+            isMobile
+                ? `${localizer.format(start, 'M/D', 'ko')} - ${localizer.format(end, 'M/D', 'ko')}`
+                : `${localizer.format(start, 'YYYY년 MM월 DD일', 'ko')} - ${localizer.format(end, 'YYYY년 MM월 DD일', 'ko')}`,
     };
 
     // 이벤트 내용 표시 컴포넌트
     const EventComponent = ({ event }) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <div style={{ fontWeight: 'bold' }}>{event.title}</div>
-            {event.createdBy && (
-                <div style={{ fontSize: '0.8em' }}>작성자: {event.createdBy}</div>
+            {!isMobile && event.createdBy && (
+                <div style={{ fontSize: '0.7em' }}>작성자: {event.createdBy}</div>
             )}
         </div>
     );
 
+    // 내비게이션 컨트롤
+    const CustomToolbar = ({ label, onNavigate, views, view, onView }) => {
+        return (
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 1,
+                mb: 1
+            }}>
+                <Box>
+                    <IconButton onClick={() => onNavigate('TODAY')}>
+                        <TodayIcon />
+                    </IconButton>
+                    <IconButton onClick={() => onNavigate('PREV')}>
+                        <NavigateBeforeIcon />
+                    </IconButton>
+                    <IconButton onClick={() => onNavigate('NEXT')}>
+                        <NavigateNextIcon />
+                    </IconButton>
+                </Box>
+
+                <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{ mx: 2 }}>
+                    {label}
+                </Typography>
+
+                {!isMobile && (
+                    <Box>
+                        {Object.keys(views).map(viewName => (
+                            <Button
+                                key={viewName}
+                                onClick={() => onView(viewName)}
+                                color={view === viewName ? 'primary' : 'inherit'}
+                            >
+                                {viewName === 'month' ? '월간' : '주간'}
+                            </Button>
+                        ))}
+                    </Box>
+                )}
+            </Box>
+        );
+    };
+
     return (
         <LocalizationProvider dateAdapter={AdapterMoment}>
-            <Box sx={{ p: 3, height: 'calc(100vh - 84px)' }}>
+            <Box sx={{
+                p: isMobile ? 1 : 3,
+                height: 'calc(100vh - 64px)',
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
                 {/* 보증금 정보 */}
-                <Paper sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
-                    <Typography variant="h6" component="div" gutterBottom>
+                <Paper sx={{
+                    p: isMobile ? 1 : 2,
+                    mb: 2,
+                    bgcolor: '#f5f5f5',
+                    borderRadius: isMobile ? 1 : 2
+                }}>
+                    <Typography
+                        variant={isMobile ? "subtitle1" : "h6"}
+                        component="div"
+                        gutterBottom={!isMobile}
+                    >
                         보증금: 1,000만원
                     </Typography>
                 </Paper>
 
-                {/* 탭 선택 (월간/주간) */}
-                <Paper sx={{ mb: 2 }}>
-                    <Tabs
-                        value={view}
-                        onChange={(e, newValue) => setView(newValue)}
-                        variant="fullWidth"
-                    >
-                        <Tab value="month" label="월간" />
-                        <Tab value="week" label="주간" />
-                    </Tabs>
-                </Paper>
+                {/* 탭 선택 (월간/주간) - 모바일에서만 표시 */}
+                {isMobile && (
+                    <Paper sx={{ mb: 2 }}>
+                        <Tabs
+                            value={view}
+                            onChange={(e, newValue) => setView(newValue)}
+                            variant="fullWidth"
+                            centered
+                        >
+                            <Tab value="month" label="월간" />
+                            <Tab value="week" label="주간" />
+                        </Tabs>
+                    </Paper>
+                )}
 
                 {/* 캘린더 */}
-                <Paper sx={{ p: 2, height: 'calc(100% - 140px)' }}>
-                    <BigCalendar
-                        localizer={localizer}
-                        events={events}
-                        startAccessor="start"
-                        endAccessor="end"
-                        style={{ height: '100%' }}
-                        view={view}
-                        onView={setView}
-                        views={['month', 'week']}
-                        step={60} // 1시간 단위
-                        timeslots={1}
-                        selectable
-                        popup
-                        onSelectEvent={handleSelectEvent}
-                        onSelectSlot={handleSelectSlot}
-                        eventPropGetter={eventStyleGetter}
-                        formats={formats}
-                        components={{
-                            event: EventComponent
-                        }}
-                        messages={{
-                            next: "다음",
-                            previous: "이전",
-                            today: "오늘",
-                            month: "월간",
-                            week: "주간",
-                            day: "일간",
-                            agenda: "일정목록",
-                            date: "날짜",
-                            time: "시간",
-                            event: "일정",
-                            allDay: "하루종일",
-                            noEventsInRange: "표시할 일정이 없습니다.",
-                            showMore: total => `+${total}개 더보기`
-                        }}
-                    />
+                <Paper sx={{
+                    p: isMobile ? 1 : 2,
+                    flexGrow: 1,
+                    borderRadius: isMobile ? 1 : 2
+                }}>
+                    {view === 'week' && isMobile ? (
+                        <Box sx={{ height: '100%' }}>
+                            <CustomToolbar
+                                label={`${moment(currentDate).startOf('week').format('YYYY년 MM월 DD일')} - ${moment(currentDate).endOf('week').format('MM월 DD일')}`}
+                                onNavigate={(action) => {
+                                    let newDate = moment(currentDate);
+                                    if (action === 'PREV') newDate = newDate.subtract(1, 'week');
+                                    else if (action === 'NEXT') newDate = newDate.add(1, 'week');
+                                    else if (action === 'TODAY') newDate = moment();
+                                    setCurrentDate(newDate.toDate());
+                                }}
+                                views={{ month: true, week: true }}
+                                view={view}
+                                onView={setView}
+                            />
+                            <CustomWeekView
+                                date={currentDate}
+                                localizer={localizer}
+                            />
+                        </Box>
+                    ) : (
+                        <BigCalendar
+                            localizer={localizer}
+                            events={events}
+                            startAccessor="start"
+                            endAccessor="end"
+                            style={{ height: '100%' }}
+                            view={view}
+                            onView={setView}
+                            views={{ month: true, week: !isMobile }}
+                            selectable
+                            popup
+                            onSelectEvent={handleSelectEvent}
+                            onSelectSlot={handleSelectSlot}
+                            eventPropGetter={eventStyleGetter}
+                            formats={formats}
+                            date={currentDate}
+                            onNavigate={date => setCurrentDate(date)}
+                            components={{
+                                event: EventComponent,
+                                toolbar: CustomToolbar
+                            }}
+                            messages={{
+                                next: "다음",
+                                previous: "이전",
+                                today: "오늘",
+                                month: "월간",
+                                week: "주간",
+                                day: "일간",
+                                agenda: "일정목록",
+                                date: "날짜",
+                                time: "시간",
+                                event: "일정",
+                                allDay: "하루종일",
+                                noEventsInRange: "일정이 없습니다",
+                                showMore: total => `+${total}개`
+                            }}
+                        />
+                    )}
                 </Paper>
 
                 {/* 새 일정 추가 버튼 */}
                 <Fab
                     color="primary"
-                    sx={{ position: 'fixed', bottom: 20, right: 20 }}
+                    size={isMobile ? "medium" : "large"}
+                    sx={{
+                        position: 'fixed',
+                        bottom: isMobile ? 16 : 20,
+                        right: isMobile ? 16 : 20,
+                        zIndex: 1000
+                    }}
                     onClick={() => {
-                        setSelectedSlot({ start: new Date(), end: new Date(new Date().getTime() + 60*60*1000) });
+                        setSelectedSlot({
+                            start: currentDate,
+                            end: new Date(currentDate.getTime() + 60*60*1000)
+                        });
                         setDialogMode('create');
                         setDialogOpen(true);
                     }}
@@ -326,6 +543,7 @@ const Calendar = () => {
                     selectedSlot={selectedSlot}
                     onSave={handleSaveEvent}
                     onDelete={handleDeleteEvent}
+                    isMobile={isMobile}
                 />
             </Box>
         </LocalizationProvider>
