@@ -15,6 +15,7 @@ import {
     Chip
 } from '@mui/material';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Close, Delete, Lock, Edit } from '@mui/icons-material';
 import moment from 'moment';
 import 'moment/locale/ko';
@@ -22,6 +23,7 @@ import 'moment/locale/ko';
 const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelete, isMobile: propIsMobile, currentUser }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [selectedDate, setSelectedDate] = useState(moment().startOf('day'));
     const [startTime, setStartTime] = useState(moment().startOf('hour'));
     const [endTime, setEndTime] = useState(moment().startOf('hour').add(1, 'hour'));
     const [isReadOnly, setIsReadOnly] = useState(false);
@@ -32,15 +34,16 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
     // 부모로부터 전달받은 isMobile 값을 우선 사용하고, 없으면 미디어 쿼리 결과 사용
     const isMobile = propIsMobile !== undefined ? propIsMobile : isSmallScreen;
 
-    // 선택한 날짜를 기준으로 설정
-    const selectedDate = selectedSlot ? moment(selectedSlot.start).startOf('day') : moment().startOf('day');
-
     // 초기값 설정 및 읽기 전용 모드 체크
     useEffect(() => {
         if ((mode === 'edit' || mode === 'view') && event) {
             setTitle(event.title || '');
             setDescription(event.description || '');
-            setStartTime(moment(event.start));
+
+            // 날짜와 시간 설정
+            const eventStart = moment(event.start);
+            setSelectedDate(eventStart.clone().startOf('day'));
+            setStartTime(eventStart);
             setEndTime(moment(event.end));
 
             // mode가 'view'이거나 isOwner가 false면 읽기 전용
@@ -50,12 +53,21 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
         } else if (mode === 'create' && selectedSlot) {
             setTitle('');
             setDescription('');
-            // 선택한 슬롯의 시간으로 설정
-            setStartTime(moment(selectedSlot.start));
+
+            // 선택한 슬롯의 날짜와 시간으로 설정
+            const slotStart = moment(selectedSlot.start);
+            setSelectedDate(slotStart.clone().startOf('day'));
+            setStartTime(slotStart);
             setEndTime(moment(selectedSlot.end || moment(selectedSlot.start).add(1, 'hour')));
+
             setIsReadOnly(false);
         }
     }, [mode, event, selectedSlot, open, currentUser]);
+
+    // 날짜 변경 핸들러
+    const handleDateChange = (newDate) => {
+        setSelectedDate(moment(newDate).startOf('day'));
+    };
 
     // 저장 처리
     const handleSave = () => {
@@ -108,8 +120,6 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
 
         return '알 수 없음';
     };
-
-    console.log('EventDialog rendering with:', { isReadOnly, mode, event, currentUser });
 
     return (
         <Dialog
@@ -204,10 +214,26 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                     />
 
                     <Box sx={{ mt: 1, mb: 0.5 }}>
-                        <Typography variant={isMobile ? "body2" : "subtitle1"} color="text.secondary">
-                            날짜: {selectedDate.format('YYYY년 MM월 DD일 (ddd)')}
+                        <Typography variant={isMobile ? "body2" : "subtitle1"} color="text.secondary" sx={{ mb: 1 }}>
+                            일정 날짜 및 시간:
                         </Typography>
                     </Box>
+
+                    {/* 날짜 선택 */}
+                    <DatePicker
+                        label="날짜"
+                        value={selectedDate}
+                        onChange={isReadOnly ? undefined : handleDateChange}
+                        readOnly={isReadOnly}
+                        slotProps={{
+                            textField: {
+                                fullWidth: true,
+                                size: isMobile ? "small" : "medium",
+                                disabled: isReadOnly
+                            }
+                        }}
+                        sx={{ mb: 2 }}
+                    />
 
                     <Box sx={{
                         display: 'flex',
@@ -268,19 +294,19 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
                                 빠른 시간 선택:
                             </Typography>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {[0, 1, 2, 3].map(hours => (
+                                {[9, 12, 15, 18].map(hour => (
                                     <Button
-                                        key={hours}
+                                        key={hour}
                                         variant="outlined"
                                         size="small"
                                         onClick={() => {
-                                            const start = moment().startOf('hour').add(hours, 'hours');
+                                            const start = moment().hour(hour).minute(0);
                                             setStartTime(start);
                                             setEndTime(moment(start).add(1, 'hour'));
                                         }}
                                         sx={{ minWidth: '60px', fontSize: '0.7rem' }}
                                     >
-                                        {moment().startOf('hour').add(hours, 'hours').format('HH:mm')}
+                                        {hour}:00
                                     </Button>
                                 ))}
                             </Box>

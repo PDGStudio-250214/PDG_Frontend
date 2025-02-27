@@ -12,7 +12,8 @@ import {
     ListItem,
     ListItemText,
     ListItemIcon,
-    Divider
+    Divider,
+    Fab
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EventIcon from '@mui/icons-material/Event';
@@ -64,16 +65,25 @@ const DayDetailDialog = ({
                             {selectedDay.format('YYYY년 MM월 DD일 (ddd)')}
                         </Typography>
                     </Box>
-                    <IconButton
-                        color="inherit"
-                        onClick={onClose}
-                        edge="end"
-                    >
-                        <CloseIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <IconButton
+                            color="inherit"
+                            onClick={onAddEvent}
+                            sx={{ mr: 1 }}
+                        >
+                            <AddIcon />
+                        </IconButton>
+                        <IconButton
+                            color="inherit"
+                            onClick={onClose}
+                            edge="end"
+                        >
+                            <CloseIcon />
+                        </IconButton>
+                    </Box>
                 </Box>
             </DialogTitle>
-            <DialogContent sx={{ p: 0 }}>
+            <DialogContent sx={{ p: 0, position: 'relative' }}>
                 {events.length === 0 ? (
                     <Box sx={{
                         p: 4,
@@ -142,6 +152,23 @@ const DayDetailDialog = ({
                                 </React.Fragment>
                             ))}
                     </List>
+                )}
+
+                {/* 플로팅 액션 버튼 (모바일에서만 표시) */}
+                {isMobile && events.length > 0 && (
+                    <Fab
+                        color="primary"
+                        size="medium"
+                        onClick={onAddEvent}
+                        sx={{
+                            position: 'fixed',
+                            bottom: 16,
+                            right: 16,
+                            zIndex: 1000
+                        }}
+                    >
+                        <AddIcon />
+                    </Fab>
                 )}
             </DialogContent>
         </Dialog>
