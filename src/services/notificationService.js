@@ -25,7 +25,7 @@ export const requestNotificationPermission = async () => {
         if (permission === 'granted') {
             // 토큰 획득
             const token = await getToken(messaging, {
-                vapidKey: 'YOUR_VAPID_KEY'
+                vapidKey: 'BFpjJGYrOgszJlUiL6AYjj36h_3bNXJmqDIuv6MHO6xt0RSriIz2ph74GkAYQcljh8t77rfHlTQMtp7Pw4N5feA'
             });
 
             console.log('알림 토큰:', token);

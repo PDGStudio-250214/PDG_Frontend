@@ -3,12 +3,12 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyB3awcs2gx9YWpSZ597H2J1OhTO3eXJTew",
+    authDomain: "schedule-app-notifications.firebaseapp.com",
+    projectId: "schedule-app-notifications",
+    storageBucket: "schedule-app-notifications.firebasestorage.app",
+    messagingSenderId: "308198270982",
+    appId: "1:308198270982:web:4fe21a985683c40cf63b87"
 });
 
 const messaging = firebase.messaging();
@@ -20,7 +20,7 @@ messaging.onBackgroundMessage((payload) => {
     const notificationTitle = payload.notification.title;
     const notificationOptions = {
         body: payload.notification.body,
-        icon: '/path/to/icon.png'
+        icon: '/logo192.png' // React 프로젝트의 기본 아이콘 사용
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);

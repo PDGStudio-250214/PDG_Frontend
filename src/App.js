@@ -7,10 +7,10 @@ import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import 'moment/locale/ko';
-import Login from "./page/Login";
+import {requestNotificationPermission, setupNotificationListener} from "./services/notificationService";
 import Calendar from "./page/Calendar";
 import ExpenseManager from "./page/ExpenseManager";
-import {requestNotificationPermission, setupNotificationListener} from "./services/notificationService";
+import Login from "./page/Login";
 
 const theme = createTheme({
     palette: {
@@ -36,30 +36,6 @@ const PrivateRoute = ({ children }) => {
     }
 
     return children;
-};
-
-// 내부 라우트 컴포넌트
-const AppRoutes = () => {
-    return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={
-                <PrivateRoute>
-                    <Layout>
-                        <Calendar />
-                    </Layout>
-                </PrivateRoute>
-            } />
-            <Route path="/expenses" element={
-                <PrivateRoute>
-                    <Layout>
-                        <ExpenseManager />
-                    </Layout>
-                </PrivateRoute>
-            } />
-            <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-    );
 };
 
 function App() {
@@ -90,23 +66,27 @@ function App() {
 
     return (
         <ThemeProvider theme={theme}>
-            <AuthProvider>
-                <Router>
-                    <Routes>
-                        <Route path="/login" element={<Login />} />
-                        <Route
-                            path="/"
-                            element={
-                                <PrivateRoute>
-                                    <Layout />
-                                </PrivateRoute>
-                            }
-                        >
-                            <Route index element={<Calendar />} />
-                        </Route>
-                    </Routes>
-                </Router>
-            </AuthProvider>
+            <LocalizationProvider dateAdapter={AdapterMoment}>
+                <AuthProvider>
+                    <Router>
+                        <Routes>
+                            <Route path="/login" element={<Login />} />
+                            <Route
+                                path="/"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout />
+                                    </PrivateRoute>
+                                }
+                            >
+                                <Route index element={<Calendar />} />
+                                {/* ExpenseManager 페이지가 있다면 */}
+                                <Route path="expenses" element={<ExpenseManager />} />
+                            </Route>
+                        </Routes>
+                    </Router>
+                </AuthProvider>
+            </LocalizationProvider>
         </ThemeProvider>
     );
 }
