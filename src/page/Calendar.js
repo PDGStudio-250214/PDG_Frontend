@@ -17,7 +17,9 @@ import {
     Select,
     MenuItem,
     Snackbar,
-    Alert
+    Alert,
+    ToggleButtonGroup,
+    ToggleButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useAuth } from '../contexts/AuthContext';
@@ -73,6 +75,13 @@ const Calendar = () => {
 
     const handleMonthChange = (event) => {
         setSelectedMonth(event.target.value);
+    };
+
+    // 뷰 변경 핸들러
+    const handleViewChange = (event, newView) => {
+        if (newView !== null) {
+            setView(newView);
+        }
     };
 
     // 주간 이동 핸들러
@@ -384,9 +393,18 @@ const Calendar = () => {
                     </Typography>
                 </Paper>
 
-                {/* 탭 선택 (월간/주간) - 모바일에서만 표시 */}
-                {isMobile && (
-                    <Paper sx={{ mb: 2 }}>
+                {/* 캘린더 컨트롤 영역 */}
+                <Paper sx={{
+                    p: 2,
+                    mb: 2,
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: 2,
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    justifyContent: 'space-between'
+                }}>
+                    {/* 탭 선택 (월간/주간) */}
+                    {isMobile ? (
                         <Tabs
                             value={view}
                             onChange={(e, newValue) => setView(newValue)}
@@ -396,11 +414,25 @@ const Calendar = () => {
                             <Tab value="month" label="월간" />
                             <Tab value="week" label="주간" />
                         </Tabs>
-                    </Paper>
-                )}
+                    ) : (
+                        <ToggleButtonGroup
+                            value={view}
+                            exclusive
+                            onChange={handleViewChange}
+                            aria-label="calendar view"
+                            size={isMobile ? "small" : "medium"}
+                        >
+                            <ToggleButton value="month">월간</ToggleButton>
+                            <ToggleButton value="week">주간</ToggleButton>
+                        </ToggleButtonGroup>
+                    )}
 
-                {/* 년/월 선택기 (월간 뷰에서만 표시) */}
-                {view === 'month' && <YearMonthSelector />}
+                    {view === 'month' && (
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <YearMonthSelector />
+                        </Box>
+                    )}
+                </Paper>
 
                 {/* 캘린더 */}
                 <Paper sx={{
@@ -485,23 +517,6 @@ const Calendar = () => {
                             setDialogMode('create');
                             setDialogOpen(true);
                         }}
-                    >
-                        <AddIcon />
-                    </Fab>
-                )}
-
-                {/* 상세 페이지에서의 새 일정 추가 버튼 */}
-                {dayDetailOpen && (
-                    <Fab
-                        color="primary"
-                        size={isMobile ? "medium" : "large"}
-                        sx={{
-                            position: 'fixed',
-                            bottom: isMobile ? 16 : 20,
-                            right: isMobile ? 16 : 20,
-                            zIndex: 1000
-                        }}
-                        onClick={handleAddEventFromDetail}
                     >
                         <AddIcon />
                     </Fab>
