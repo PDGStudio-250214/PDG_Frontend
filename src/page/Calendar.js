@@ -31,6 +31,7 @@ import api from '../api/config';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { getUserColor } from '../utils/colorUtils';
+import NotificationPermission from "../components/NotificationPermission";
 
 // 한국어 설정
 moment.locale('ko');
@@ -222,6 +223,21 @@ const Calendar = () => {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 
+                // 일정 생성 후 알림 전송 요청
+                try {
+                    await api.post('/notifications/send', {
+                        title: '새 일정이 추가되었습니다',
+                        body: `${eventData.title} (${moment(eventData.start).format('MM/DD HH:mm')})`,
+                        eventId: response.data.id || response.data.schedule.id
+                    }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                } catch (notificationError) {
+                    console.error('알림 전송 중 오류:', notificationError);
+                    // 알림 전송 실패해도 일정 저장은 성공으로 처리
+                }
+
+
                 // 응답에서 일정 데이터 확인
                 const createdSchedule = response.data.schedule || response.data;
 
@@ -377,6 +393,9 @@ const Calendar = () => {
                 flexDirection: 'column',
                 overflow: 'hidden'
             }}>
+
+                <NotificationPermission />
+
                 {/* 보증금 정보 */}
                 <Paper sx={{
                     p: isMobile ? 1 : 2,
