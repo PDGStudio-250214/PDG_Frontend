@@ -100,7 +100,6 @@ const Layout = ({ children }) => {
                     <List>
                         {menuItems.map((item) => (
                             <ListItem
-                                button
                                 key={item.text}
                                 component={NavLink}
                                 to={item.path}
@@ -123,7 +122,7 @@ const Layout = ({ children }) => {
                     </List>
                     <Divider />
                     <List>
-                        <ListItem button onClick={handleLogout}>
+                        <ListItem onClick={handleLogout}>
                             <ListItemIcon><LogoutIcon /></ListItemIcon>
                             <ListItemText primary="로그아웃" />
                         </ListItem>

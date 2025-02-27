@@ -8,9 +8,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import 'moment/locale/ko';
 import {requestNotificationPermission, setupNotificationListener} from "./services/notificationService";
-import Calendar from "./page/Calendar";
 import ExpenseManager from "./page/ExpenseManager";
 import Login from "./page/Login";
+import Calendar from "./page/Calendar";
 
 const theme = createTheme({
     palette: {
@@ -71,18 +71,20 @@ function App() {
                     <Router>
                         <Routes>
                             <Route path="/login" element={<Login />} />
-                            <Route
-                                path="/"
-                                element={
-                                    <PrivateRoute>
-                                        <Layout />
-                                    </PrivateRoute>
-                                }
-                            >
-                                <Route index element={<Calendar />} />
-                                {/* ExpenseManager 페이지가 있다면 */}
-                                <Route path="expenses" element={<ExpenseManager />} />
-                            </Route>
+                            <Route path="/" element={
+                                <PrivateRoute>
+                                    <Layout>
+                                        <Calendar />
+                                    </Layout>
+                                </PrivateRoute>
+                            } />
+                            <Route path="/expenses" element={
+                                <PrivateRoute>
+                                    <Layout>
+                                        <ExpenseManager />
+                                    </Layout>
+                                </PrivateRoute>
+                            } />
                         </Routes>
                     </Router>
                 </AuthProvider>

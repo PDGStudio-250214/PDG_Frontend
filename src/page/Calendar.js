@@ -1,4 +1,3 @@
-// src/pages/Calendar.js
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import moment from 'moment';
 import 'moment/locale/ko';
@@ -394,7 +393,7 @@ const Calendar = () => {
                 overflow: 'hidden'
             }}>
 
-                <NotificationPermission />
+                {/*<NotificationPermission />*/}
 
                 {/* 보증금 정보 */}
                 <Paper sx={{
