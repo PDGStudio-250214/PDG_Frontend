@@ -95,8 +95,6 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
         }
     };
 
-    console.log('EventDialog rendering with:', { isReadOnly, mode, event, currentUser });
-
     // 작성자 정보 가져오기
     const getCreatorName = () => {
         if (!event) return '';
@@ -110,6 +108,8 @@ const EventDialog = ({ open, onClose, mode, event, selectedSlot, onSave, onDelet
 
         return '알 수 없음';
     };
+
+    console.log('EventDialog rendering with:', { isReadOnly, mode, event, currentUser });
 
     return (
         <Dialog

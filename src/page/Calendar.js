@@ -1,6 +1,5 @@
 // src/pages/Calendar.js
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/ko';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -13,95 +12,26 @@ import {
     Typography,
     useMediaQuery,
     useTheme,
-    Button,
-    Grid,
-    MenuItem,
-    Select,
     FormControl,
     InputLabel,
+    Select,
+    MenuItem,
     Snackbar,
-    Alert,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    IconButton,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemIcon,
-    Divider
+    Alert
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import EventIcon from '@mui/icons-material/Event';
-import CloseIcon from '@mui/icons-material/Close';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useAuth } from '../contexts/AuthContext';
 import EventDialog from '../components/EventDialog';
+import DayDetailDialog from '../components/DayDetailDialog';
+import CustomMonthView from '../components/CustomMonthView';
+import CustomWeekView from '../components/CustomWeekView';
 import api from '../api/config';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { getUserColor } from '../utils/colorUtils';
 
 // 한국어 설정
 moment.locale('ko');
-const localizer = momentLocalizer(moment);
-
-// 사용자별 색상 설정
-const userColors = {
-    '승혜': '#FF5722',  // pizza
-    'pizza@test.com': '#FF5722',  // 이메일로도 매핑
-    '가연': '#2196F3',  // 1bfish106
-    '1bfish106@test.com': '#2196F3',  // 이메일로도 매핑
-    '석린': '#4CAF50',  // hosk2014
-    'hosk2014@test.com': '#4CAF50'  // 이메일로도 매핑
-};
-
-
-const getUserColor = (username) => {
-    console.log('색상 매핑 중:', username);
-
-    // 직접 매핑 먼저 시도
-    if (userColors[username]) {
-        return userColors[username];
-    }
-
-    // 이름이 포함된 키 찾기 (부분 매칭)
-    const partialMatch = Object.keys(userColors).find(key =>
-        username.includes(key) || key.includes(username)
-    );
-
-    if (partialMatch) {
-        return userColors[partialMatch];
-    }
-
-    // 이메일 패턴 매칭 (예: "이름 <이메일>" 형식)
-    if (username.includes('@')) {
-        const emailPart = username.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
-        if (emailPart && emailPart[0]) {
-            const email = emailPart[0];
-            if (userColors[email]) {
-                return userColors[email];
-            }
-
-            // 이메일의 @ 앞부분을 기준으로 매칭 시도
-            const emailPrefix = email.split('@')[0];
-            for (const key in userColors) {
-                if (key.includes(emailPrefix) || emailPrefix.includes(key)) {
-                    return userColors[key];
-                }
-            }
-        }
-    }
-
-    // 기본 색상 반환 (사용자별로 다른 기본 색상)
-    const hash = username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const defaultColors = ['#9C27B0', '#673AB7', '#3F51B5', '#F44336', '#E91E63'];
-    return defaultColors[hash % defaultColors.length];
-};
-
-// 기본 색상
-const defaultColor = '#9C27B0';
 
 const Calendar = () => {
     const { user } = useAuth();
@@ -149,351 +79,6 @@ const Calendar = () => {
     const navigateWeek = (direction) => {
         const newDate = moment(currentDate).add(direction, 'week').toDate();
         setCurrentDate(newDate);
-    };
-
-    // 커스텀 주간 뷰 컴포넌트
-    const CustomWeekView = ({ date, localizer }) => {
-        // 현재 주간의 시작일과 종료일 계산
-        const start = moment(date).startOf('week');
-        const end = moment(date).endOf('week');
-
-        // 현재 주 표시
-        const currentWeekText = `${start.format('YYYY년 MM월 DD일')} - ${end.format('MM월 DD일')}`;
-
-        // 현재 주간에 해당하는 날짜들 생성 (7일)
-        const days = [];
-        for (let i = 0; i < 7; i++) {
-            days.push(moment(start).add(i, 'days'));
-        }
-
-        // 이벤트를 날짜별로 그룹화
-        const eventsByDay = {};
-        events.forEach(event => {
-            const eventDate = moment(event.start).format('YYYY-MM-DD');
-            if (!eventsByDay[eventDate]) {
-                eventsByDay[eventDate] = [];
-            }
-            eventsByDay[eventDate].push(event);
-        });
-
-        const handleDayClick = (day) => {
-            // 상세 페이지용 날짜 정보 저장
-            setSelectedDay(day);
-
-            // 해당 날짜의 이벤트 필터링
-            const dateStr = day.format('YYYY-MM-DD');
-            const filteredEvents = eventsByDay[dateStr] || [];
-            setDayEvents(filteredEvents);
-
-            // 상세 페이지 열기
-            setDayDetailOpen(true);
-        };
-
-        return (
-            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                {/* 주간 네비게이션 */}
-                <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    mb: 2,
-                    px: 1
-                }}>
-                    <IconButton onClick={() => navigateWeek(-1)}>
-                        <ChevronLeftIcon />
-                    </IconButton>
-                    <Typography variant="h6" sx={{ fontWeight: 'medium', fontSize: isMobile ? '0.9rem' : '1.1rem' }}>
-                        {currentWeekText}
-                    </Typography>
-                    <IconButton onClick={() => navigateWeek(1)}>
-                        <ChevronRightIcon />
-                    </IconButton>
-                </Box>
-
-                {/* 주간 일정 표시 */}
-                <Box
-                    ref={weekViewRef}
-                    sx={{
-                        flexGrow: 1,
-                        overflow: 'auto',
-                        pt: 1
-                    }}
-                >
-                    {days.map((day) => {
-                        const dateStr = day.format('YYYY-MM-DD');
-                        const dayEvents = eventsByDay[dateStr] || [];
-                        const isToday = day.isSame(moment(), 'day');
-
-                        return (
-                            <Box
-                                key={dateStr}
-                                sx={{
-                                    mb: 2,
-                                    backgroundColor: isToday ? 'rgba(25, 118, 210, 0.05)' : 'transparent',
-                                    borderRadius: 1,
-                                    border: isToday ? '1px solid rgba(25, 118, 210, 0.2)' : '1px solid #eee',
-                                    cursor: 'pointer'
-                                }}
-                                onClick={() => handleDayClick(day)}
-                            >
-                                <Box
-                                    sx={{
-                                        py: 1,
-                                        px: 2,
-                                        backgroundColor: isToday ? 'primary.main' : 'grey.100',
-                                        borderRadius: '4px 4px 0 0',
-                                        color: isToday ? 'white' : 'inherit',
-                                        fontWeight: isToday ? 'bold' : 'normal',
-                                        fontSize: '0.9rem'
-                                    }}
-                                >
-                                    {day.format('YYYY년 MM월 DD일 (ddd)')}
-                                </Box>
-
-                                {dayEvents.length === 0 ? (
-                                    <Box sx={{ p: 2, color: 'text.secondary', fontSize: '0.9rem' }}>
-                                        일정이 없습니다
-                                    </Box>
-                                ) : (
-                                    dayEvents
-                                        .sort((a, b) => moment(a.start).valueOf() - moment(b.start).valueOf())
-                                        .map((event, idx) => (
-                                            <Box
-                                                key={idx}
-                                                sx={{
-                                                    p: 2,
-                                                    borderBottom: idx < dayEvents.length - 1 ? '1px solid #eee' : 'none',
-                                                    cursor: 'pointer',
-                                                    '&:hover': {
-                                                        backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                                                    }
-                                                }}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleEventClick(event);
-                                                }}
-                                            >
-                                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                                                    <Box
-                                                        sx={{
-                                                            width: 10,
-                                                            height: 10,
-                                                            borderRadius: '50%',
-                                                            backgroundColor: event.color || defaultColor,
-                                                            mr: 1
-                                                        }}
-                                                    />
-                                                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                                                        {event.title}
-                                                    </Typography>
-                                                </Box>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    {moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}
-                                                </Typography>
-                                                {event.userName && (
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        작성자: {event.userName}
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        ))
-                                )}
-                            </Box>
-                        );
-                    })}
-                </Box>
-            </Box>
-        );
-    };
-
-    // 커스텀 월간 뷰 컴포넌트
-    const CustomMonthView = ({ date }) => {
-        // 현재 월의 시작일과 종료일
-        const start = moment(date).startOf('month').startOf('week');
-        const end = moment(date).endOf('month').endOf('week');
-
-        // 주 별로 날짜 생성
-        const weeks = [];
-        let days = [];
-        let day = start.clone();
-
-        while (day.isSameOrBefore(end, 'day')) {
-            for (let i = 0; i < 7; i++) {
-                days.push(day.clone());
-                day.add(1, 'day');
-            }
-            weeks.push(days);
-            days = [];
-        }
-
-        // 이벤트를 날짜별로 그룹화
-        const eventsByDate = {};
-        events.forEach(event => {
-            const eventDate = moment(event.start).format('YYYY-MM-DD');
-            if (!eventsByDate[eventDate]) {
-                eventsByDate[eventDate] = [];
-            }
-            eventsByDate[eventDate].push(event);
-        });
-
-        const handleDateClick = (day) => {
-            // 상세 페이지용 날짜 정보 저장
-            setSelectedDay(day);
-
-            // 해당 날짜의 이벤트 필터링
-            const dateStr = day.format('YYYY-MM-DD');
-            const filteredEvents = eventsByDate[dateStr] || [];
-            setDayEvents(filteredEvents);
-
-            // 상세 페이지 열기
-            setDayDetailOpen(true);
-        };
-
-        const currentMonth = moment(date).month();
-
-        // 주 갯수 계산하여 cell 높이 조절
-        const weekCount = weeks.length;
-        const cellHeight = isMobile
-            ? (weekCount > 5 ? 60 : 75) // 모바일에서 높이 증가
-            : (weekCount > 5 ? 100 : 120); // 데스크톱에서 높이 증가
-
-        // 요일 헤더
-        const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-
-        return (
-            <Box sx={{
-                height: '100%',
-                overflow: 'auto',
-                display: 'flex',
-                flexDirection: 'column'
-            }}>
-                {/* 요일 헤더 */}
-                <Grid container sx={{
-                    textAlign: 'center',
-                    py: isMobile ? 1.5 : 2, // 헤더 높이 증가
-                    borderBottom: '1px solid #eee',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1,
-                    bgcolor: 'background.paper'
-                }}>
-                    {weekdays.map((day, idx) => (
-                        <Grid item xs={12/7} key={idx} sx={{
-                            color: idx === 0 ? 'error.main' : idx === 6 ? 'primary.main' : 'text.primary',
-                            fontWeight: 'bold',
-                            fontSize: isMobile ? '0.85rem' : '1rem' // 폰트 크기 증가
-                        }}>
-                            {day}
-                        </Grid>
-                    ))}
-                </Grid>
-
-                {/* 달력 내용 */}
-                <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-                    {weeks.map((week, weekIdx) => (
-                        <Grid container key={weekIdx} sx={{
-                            borderBottom: weekIdx < weeks.length - 1 ? '1px solid #f0f0f0' : 'none',
-                            height: cellHeight,
-                            minHeight: isMobile ? '60px' : '100px', // 최소 높이 증가
-                        }}>
-                            {week.map((day, dayIdx) => {
-                                const dateStr = day.format('YYYY-MM-DD');
-                                const isToday = day.isSame(moment(), 'day');
-                                const isCurrentMonth = day.month() === currentMonth;
-                                const dayEvents = eventsByDate[dateStr] || [];
-
-                                return (
-                                    <Grid
-                                        item
-                                        xs={12/7}
-                                        key={dayIdx}
-                                        sx={{
-                                            borderRight: dayIdx < 6 ? '1px solid #f0f0f0' : 'none',
-                                            p: 0.5,
-                                            backgroundColor: isToday ? 'rgba(25, 118, 210, 0.05)' : 'transparent',
-                                            color: !isCurrentMonth ? 'text.disabled' :
-                                                dayIdx === 0 ? 'error.main' :
-                                                    dayIdx === 6 ? 'primary.main' : 'text.primary',
-                                            cursor: 'pointer',
-                                            position: 'relative',
-                                            height: '100%',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            '&:hover': {
-                                                backgroundColor: 'rgba(0, 0, 0, 0.02)'
-                                            },
-                                            overflow: 'hidden'
-                                        }}
-                                        onClick={() => handleDateClick(day)}
-                                    >
-                                        {/* 날짜 표시 */}
-                                        <Box sx={{
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            width: isToday ? '24px' : 'auto', // 크기 증가
-                                            height: isToday ? '24px' : 'auto', // 크기 증가
-                                            borderRadius: isToday ? '50%' : 'none',
-                                            backgroundColor: isToday ? 'primary.main' : 'transparent',
-                                            color: isToday ? 'white' : 'inherit',
-                                            mb: 0.75, // 마진 증가
-                                            fontWeight: isToday || day.date() === 1 ? 'bold' : 'normal',
-                                            fontSize: isMobile ? '0.85rem' : '1rem' // 폰트 크기 증가
-                                        }}>
-                                            {day.date()}
-                                        </Box>
-
-                                        {/* 일정 표시 */}
-                                        <Box sx={{
-                                            overflow: 'auto',
-                                            flexGrow: 1,
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '3px' // 간격 증가
-                                        }}>
-                                            {dayEvents.slice(0, isMobile ? 3 : 4).map((event, idx) => ( // 표시 개수 증가
-                                                <Box
-                                                    key={idx}
-                                                    sx={{
-                                                        backgroundColor: event.color || defaultColor,
-                                                        color: 'white',
-                                                        borderRadius: '3px',
-                                                        fontSize: isMobile ? '0.7rem' : '0.75rem', // 폰트 크기 증가
-                                                        p: '2px 4px', // 패딩 증가
-                                                        height: 'auto',
-                                                        minHeight: isMobile ? '18px' : '22px', // 높이 증가
-                                                        lineHeight: isMobile ? '18px' : '22px', // 줄 높이 증가
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        display: 'block'
-                                                    }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleEventClick(event);
-                                                    }}
-                                                >
-                                                    {event.title}
-                                                </Box>
-                                            ))}
-                                            {dayEvents.length > (isMobile ? 3 : 4) && ( // 표시 개수에 맞게 조정
-                                                <Typography variant="caption" sx={{
-                                                    color: 'text.secondary',
-                                                    fontSize: '0.7rem', // 폰트 크기 증가
-                                                    mt: 0.5
-                                                }}>
-                                                    +{dayEvents.length - (isMobile ? 3 : 4)}개
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    </Grid>
-                                );
-                            })}
-                        </Grid>
-                    ))}
-                </Box>
-            </Box>
-        );
     };
 
     // 일정 조회
@@ -564,7 +149,23 @@ const Calendar = () => {
         }
     }, [user, fetchEvents]);
 
-    // 상세 페이지에서 일정 클릭 핸들러
+    // 날짜 클릭 핸들러
+    const handleDateClick = (day) => {
+        // 상세 페이지용 날짜 정보 저장
+        setSelectedDay(day);
+
+        // 해당 날짜의 이벤트 필터링
+        const dateStr = day.format('YYYY-MM-DD');
+        const filteredEvents = events.filter(event =>
+            moment(event.start).format('YYYY-MM-DD') === dateStr
+        );
+        setDayEvents(filteredEvents);
+
+        // 상세 페이지 열기
+        setDayDetailOpen(true);
+    };
+
+    // 일정 클릭 핸들러
     const handleEventClick = (event) => {
         setSelectedEvent(event);
 
@@ -572,7 +173,7 @@ const Calendar = () => {
             id: event.id,
             title: event.title,
             userId: event.userId,
-            userEmail: event.userEmail,
+            userName: event.userName,
             isOwner: event.isOwner
         });
         console.log('Current user:', user);
@@ -819,11 +420,22 @@ const Calendar = () => {
                         {/* 뷰에 따른 컴포넌트 렌더링 */}
                         <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
                             {view === 'month' ? (
-                                <CustomMonthView date={currentDate} />
+                                <CustomMonthView
+                                    date={currentDate}
+                                    events={events}
+                                    onDateClick={handleDateClick}
+                                    onEventClick={handleEventClick}
+                                    isMobile={isMobile}
+                                />
                             ) : (
                                 <CustomWeekView
                                     date={currentDate}
-                                    localizer={localizer}
+                                    events={events}
+                                    onDayClick={handleDateClick}
+                                    onEventClick={handleEventClick}
+                                    onNavigateWeek={navigateWeek}
+                                    isMobile={isMobile}
+                                    ref={weekViewRef}
                                 />
                             )}
                         </Box>
@@ -844,113 +456,15 @@ const Calendar = () => {
                 />
 
                 {/* 날짜 상세 페이지 다이얼로그 */}
-                <Dialog
-                    fullScreen={isMobile}
+                <DayDetailDialog
                     open={dayDetailOpen}
                     onClose={() => setDayDetailOpen(false)}
-                    maxWidth="sm"
-                    fullWidth
-                >
-                    <DialogTitle sx={{
-                        p: isMobile ? 2 : 3,
-                        backgroundColor: 'primary.main',
-                        color: 'white'
-                    }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <IconButton
-                                    edge="start"
-                                    color="inherit"
-                                    onClick={() => setDayDetailOpen(false)}
-                                    sx={{ mr: 1 }}
-                                >
-                                    <ArrowBackIcon />
-                                </IconButton>
-                                <Typography variant="h6">
-                                    {selectedDay ? selectedDay.format('YYYY년 MM월 DD일 (ddd)') : '날짜 상세'}
-                                </Typography>
-                            </Box>
-                            <IconButton
-                                color="inherit"
-                                onClick={() => setDayDetailOpen(false)}
-                                edge="end"
-                            >
-                                <CloseIcon />
-                            </IconButton>
-                        </Box>
-                    </DialogTitle>
-                    <DialogContent sx={{ p: 0 }}>
-                        {dayEvents.length === 0 ? (
-                            <Box sx={{
-                                p: 4,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                height: isMobile ? 'calc(100vh - 64px)' : '300px'
-                            }}>
-                                <EventIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                                <Typography variant="h6" color="text.secondary">
-                                    일정이 없습니다
-                                </Typography>
-                                <Button
-                                    variant="contained"
-                                    startIcon={<AddIcon />}
-                                    onClick={handleAddEventFromDetail}
-                                    sx={{ mt: 2 }}
-                                >
-                                    새 일정 추가
-                                </Button>
-                            </Box>
-                        ) : (
-                            <List sx={{ p: 0 }}>
-                                {dayEvents
-                                    .sort((a, b) => moment(a.start).valueOf() - moment(b.start).valueOf())
-                                    .map((event, index) => (
-                                        <React.Fragment key={event.id || index}>
-                                            <ListItem
-                                                button
-                                                onClick={() => handleEventClick(event)}
-                                                sx={{
-                                                    py: 2,
-                                                    px: 3,
-                                                    borderLeft: `4px solid ${event.color || defaultColor}`
-                                                }}
-                                            >
-                                                <ListItemIcon sx={{ minWidth: '40px' }}>
-                                                    <EventIcon sx={{ color: event.color || defaultColor }} />
-                                                </ListItemIcon>
-                                                <ListItemText
-                                                    primary={
-                                                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                                                            {event.title}
-                                                        </Typography>
-                                                    }
-                                                    secondary={
-                                                        <>
-                                                            <Typography variant="body2" component="span">
-                                                                {moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}
-                                                            </Typography>
-                                                            <br />
-                                                            {event.description && (
-                                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                                    {event.description}
-                                                                </Typography>
-                                                            )}
-                                                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                                                                작성자: {event.userName || event.createdBy || '알 수 없음'}
-                                                            </Typography>
-                                                        </>
-                                                    }
-                                                />
-                                            </ListItem>
-                                            {index < dayEvents.length - 1 && <Divider />}
-                                        </React.Fragment>
-                                    ))}
-                            </List>
-                        )}
-                    </DialogContent>
-                </Dialog>
+                    selectedDay={selectedDay}
+                    events={dayEvents}
+                    onEventClick={handleEventClick}
+                    onAddEvent={handleAddEventFromDetail}
+                    isMobile={isMobile}
+                />
 
                 {/* 새 일정 추가 버튼 - 상세 페이지에서는 숨김 */}
                 {!dayDetailOpen && (
