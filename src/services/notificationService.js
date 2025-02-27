@@ -2,14 +2,14 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
-// Firebase 구성 정보
+// src/services/notificationService.js의 해당 부분 수정
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDOZrC4AVi4gt69PmgzinsdfxkcnENWtoc",  // 새 API 키로 업데이트
+    authDomain: "schedule-app-notifications.firebaseapp.com",
+    projectId: "schedule-app-notifications",
+    storageBucket: "schedule-app-notifications.firebasestorage.app",
+    messagingSenderId: "308198270982",
+    appId: "1:308198270982:web:4fe21a985683c40cf63b87"
 };
 
 // Firebase 초기화

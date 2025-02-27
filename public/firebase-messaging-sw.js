@@ -3,7 +3,7 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-    apiKey: "AIzaSyB3awcs2gx9YWpSZ597H2J1OhTO3eXJTew",
+    apiKey: "AIzaSyDOZrC4AVi4gt69PmgzinsdfxkcnENWtoc",  // 새 API 키로 업데이트
     authDomain: "schedule-app-notifications.firebaseapp.com",
     projectId: "schedule-app-notifications",
     storageBucket: "schedule-app-notifications.firebasestorage.app",
@@ -20,7 +20,7 @@ messaging.onBackgroundMessage((payload) => {
     const notificationTitle = payload.notification.title;
     const notificationOptions = {
         body: payload.notification.body,
-        icon: '/logo192.png' // React 프로젝트의 기본 아이콘 사용
+        icon: '/logo192.png'
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);
