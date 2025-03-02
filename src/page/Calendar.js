@@ -1,3 +1,4 @@
+// src/pages/Calendar.js (보증금 정보 제거)
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import moment from 'moment';
 import 'moment/locale/ko';
@@ -7,7 +8,6 @@ import {
     Paper,
     Tabs,
     Tab,
-    Fab,
     Typography,
     useMediaQuery,
     useTheme,
@@ -20,7 +20,6 @@ import {
     ToggleButtonGroup,
     ToggleButton
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import { useAuth } from '../contexts/AuthContext';
 import EventDialog from '../components/EventDialog';
 import DayDetailDialog from '../components/DayDetailDialog';
@@ -30,7 +29,6 @@ import api from '../api/config';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { getUserColor } from '../utils/colorUtils';
-import NotificationPermission from "../components/NotificationPermission";
 
 // 한국어 설정
 moment.locale('ko');
@@ -138,8 +136,6 @@ const Calendar = () => {
                     // 사용자 식별자 저장
                     userName: userName,
                     userId: userId,
-                    // createdBy 필드 명시적 설정
-                    createdBy: userName,
                     // 현재 로그인한 사용자가 작성한 일정인지 여부
                     isOwner: userId === user?.id
                 };
@@ -177,27 +173,35 @@ const Calendar = () => {
     // 일정 클릭 핸들러
     const handleEventClick = (event) => {
         setSelectedEvent(event);
-
-        console.log('Clicked event full data:', {
-            id: event.id,
-            title: event.title,
-            userId: event.userId,
-            userName: event.userName,
-            isOwner: event.isOwner
-        });
-        console.log('Current user:', user);
-
-        // 소유자 여부에 따라 모드 설정
         setDialogMode(event.isOwner ? 'edit' : 'view');
+        setDialogOpen(true);
+    };
 
+    // 주간 뷰에서 일정 추가 버튼 클릭 핸들러
+    const handleAddEventForDay = (day) => {
+        const now = moment();
+        const startDate = moment(day)
+            .hour(now.hour())
+            .minute(Math.ceil(now.minute() / 15) * 15); // 15분 단위로 반올림
+
+        setSelectedSlot({
+            start: startDate.toDate(),
+            end: moment(startDate).add(1, 'hour').toDate()
+        });
+        setDialogMode('create');
         setDialogOpen(true);
     };
 
     // 상세 페이지에서 일정 추가 버튼 클릭 핸들러
     const handleAddEventFromDetail = () => {
+        const now = moment();
+        const startDate = moment(selectedDay)
+            .hour(now.hour())
+            .minute(Math.ceil(now.minute() / 15) * 15); // 15분 단위로 반올림
+
         setSelectedSlot({
-            start: selectedDay.toDate(),
-            end: moment(selectedDay).add(1, 'hour').toDate()
+            start: startDate.toDate(),
+            end: moment(startDate).add(1, 'hour').toDate()
         });
         setDialogMode('create');
         setDialogOpen(true);
@@ -221,21 +225,6 @@ const Calendar = () => {
                 response = await api.post('/schedules', payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-
-                // 일정 생성 후 알림 전송 요청
-                try {
-                    await api.post('/notifications/send', {
-                        title: '새 일정이 추가되었습니다',
-                        body: `${eventData.title} (${moment(eventData.start).format('MM/DD HH:mm')})`,
-                        eventId: response.data.id || response.data.schedule.id
-                    }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                } catch (notificationError) {
-                    console.error('알림 전송 중 오류:', notificationError);
-                    // 알림 전송 실패해도 일정 저장은 성공으로 처리
-                }
-
 
                 // 응답에서 일정 데이터 확인
                 const createdSchedule = response.data.schedule || response.data;
@@ -347,7 +336,6 @@ const Calendar = () => {
             <Box sx={{
                 display: 'flex',
                 alignItems: 'center',
-                mb: 2,
                 gap: 2
             }}>
                 <FormControl size="small" sx={{ minWidth: 100 }}>
@@ -392,25 +380,6 @@ const Calendar = () => {
                 flexDirection: 'column',
                 overflow: 'hidden'
             }}>
-
-                {/*<NotificationPermission />*/}
-
-                {/* 보증금 정보 */}
-                <Paper sx={{
-                    p: isMobile ? 1 : 2,
-                    mb: 2,
-                    bgcolor: '#f5f5f5',
-                    borderRadius: isMobile ? 1 : 2
-                }}>
-                    <Typography
-                        variant={isMobile ? "subtitle1" : "h6"}
-                        component="div"
-                        gutterBottom={!isMobile}
-                    >
-                        보증금: 1,000만원
-                    </Typography>
-                </Paper>
-
                 {/* 캘린더 컨트롤 영역 */}
                 <Paper sx={{
                     p: 2,
@@ -419,7 +388,9 @@ const Calendar = () => {
                     flexDirection: isMobile ? 'column' : 'row',
                     gap: 2,
                     alignItems: isMobile ? 'stretch' : 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    borderRadius: 2,
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
                 }}>
                     {/* 탭 선택 (월간/주간) */}
                     {isMobile ? (
@@ -456,10 +427,11 @@ const Calendar = () => {
                 <Paper sx={{
                     p: isMobile ? 1 : 2,
                     flexGrow: 1,
-                    borderRadius: isMobile ? 1 : 2,
+                    borderRadius: 2,
                     overflow: 'hidden',
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.07)'
                 }}>
                     <Box sx={{
                         display: 'flex',
@@ -484,6 +456,7 @@ const Calendar = () => {
                                     onDayClick={handleDateClick}
                                     onEventClick={handleEventClick}
                                     onNavigateWeek={navigateWeek}
+                                    onAddEvent={handleAddEventForDay}
                                     isMobile={isMobile}
                                     ref={weekViewRef}
                                 />
@@ -515,30 +488,6 @@ const Calendar = () => {
                     onAddEvent={handleAddEventFromDetail}
                     isMobile={isMobile}
                 />
-
-                {/* 새 일정 추가 버튼 - 상세 페이지에서는 숨김 */}
-                {!dayDetailOpen && (
-                    <Fab
-                        color="primary"
-                        size={isMobile ? "medium" : "large"}
-                        sx={{
-                            position: 'fixed',
-                            bottom: isMobile ? 16 : 20,
-                            right: isMobile ? 16 : 20,
-                            zIndex: 1000
-                        }}
-                        onClick={() => {
-                            setSelectedSlot({
-                                start: currentDate,
-                                end: new Date(currentDate.getTime() + 60*60*1000)
-                            });
-                            setDialogMode('create');
-                            setDialogOpen(true);
-                        }}
-                    >
-                        <AddIcon />
-                    </Fab>
-                )}
 
                 {/* 알림 메시지 */}
                 <Snackbar
