@@ -53,6 +53,7 @@ const ExpenseManager = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState('info');
+    const [totalBalance, setTotalBalance] = useState(0); // 총 잔액 상태 추가
 
     // 특별 권한 체크 (hosk2014 계정만 수정 가능)
     const isAdmin = user?.email === 'hosk2014@test.com';
@@ -80,10 +81,23 @@ const ExpenseManager = () => {
             });
             console.log('Fetched transactions:', response.data);
             setTransactions(response.data);
+
+            // 총 잔액 계산 (모든 거래 내역 기준)
+            calculateTotalBalance(response.data);
         } catch (error) {
             console.error('거래 내역 데이터 로드 중 오류:', error);
             showSnackbar('거래 내역을 불러오는데 실패했습니다.', 'error');
         }
+    };
+
+    // 총 잔액 계산 함수
+    const calculateTotalBalance = (transactionData) => {
+        const total = transactionData.reduce((total, t) => {
+            // 입금은 양수, 그 외는 음수로 계산
+            const value = t.type === 'DEPOSIT' ? t.amount : -t.amount;
+            return total + value;
+        }, 0);
+        setTotalBalance(total);
     };
 
     // 필터링된 거래 내역 목록
@@ -185,7 +199,7 @@ const ExpenseManager = () => {
         return typeMap[type] || { label: type, color: 'default' };
     };
 
-    // 월별 합계 계산
+    // 월별 합계 계산 (현재 선택된 월에 대한 계산)
     const calculateMonthlyTotal = (type) => {
         const currentMonth = moment().month();
         const currentYear = moment().year();
@@ -213,6 +227,18 @@ const ExpenseManager = () => {
                     금융 내역 관리
                 </Typography>
 
+                {/* 총 잔액 정보 (항상 표시) */}
+                <Paper sx={{ p: 2, mb: 3, bgcolor: '#f0f7ff' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="h6">
+                            총 잔액
+                        </Typography>
+                        <Typography variant="h5" fontWeight="bold" color={totalBalance >= 0 ? 'success.main' : 'error.main'}>
+                            {totalBalance.toLocaleString()}원
+                        </Typography>
+                    </Box>
+                </Paper>
+
                 {/* 월별 요약 정보 */}
                 <Paper sx={{ p: 2, mb: 3, bgcolor: '#f8f9fa' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -237,7 +263,7 @@ const ExpenseManager = () => {
                             <Typography variant="h6">{calculateMonthlyTotal('MAINTENANCE').toLocaleString()}원</Typography>
                         </Box>
                         <Box sx={{ flex: '1 1 200px', p: 1 }}>
-                            <Typography variant="subtitle2" color="text.secondary">총 잔액</Typography>
+                            <Typography variant="subtitle2" color="text.secondary">이번 달 변동</Typography>
                             <Typography variant="h6" color={calculateMonthlyTotal('ALL') >= 0 ? 'success.main' : 'error.main'}>
                                 {calculateMonthlyTotal('ALL').toLocaleString()}원
                             </Typography>
