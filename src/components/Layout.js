@@ -105,7 +105,20 @@ const Layout = ({ children }) => {
         return colors[index];
     };
 
+    // 사용자 이메일에 따라 프로필 이미지 경로 반환
+    const getProfileImage = (email) => {
+        if (!email) return null;
+
+        // 이메일에 따라 다른 이미지 반환
+        if (email === 'pizza@test.com') return '/pizza.png';
+        if (email === '1bfish106@test.com') return '/gayeon.png';
+        if (email === 'hosk2014@test.com') return '/hosk.png';
+
+        return null; // 기본값은 null (아바타 사용)
+    };
+
     const avatarColor = getAvatarColor(user?.email);
+    const profileImage = getProfileImage(user?.email);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -147,36 +160,6 @@ const Layout = ({ children }) => {
                         >
                             PDGStudio
                         </Typography>
-
-                        {!isMobile && (
-                            <Box sx={{ ml: 3, display: 'flex', gap: 1 }}>
-                                {menuItems.map((item) => (
-                                    <Button
-                                        key={item.text}
-                                        component={NavLink}
-                                        to={item.path}
-                                        color="inherit"
-                                        startIcon={item.icon}
-                                        sx={{
-                                            fontWeight: 'medium',
-                                            textTransform: 'none',
-                                            opacity: 0.9,
-                                            '&.active': {
-                                                opacity: 1,
-                                                fontWeight: 'bold',
-                                                bgcolor: 'rgba(255, 255, 255, 0.15)',
-                                                borderRadius: 1
-                                            },
-                                            '&:hover': {
-                                                bgcolor: 'rgba(255, 255, 255, 0.1)'
-                                            }
-                                        }}
-                                    >
-                                        {item.text}
-                                    </Button>
-                                ))}
-                            </Box>
-                        )}
                     </Box>
 
                     {user && (
@@ -201,17 +184,28 @@ const Layout = ({ children }) => {
                                     }
                                 }}
                             >
-                                <Avatar
-                                    sx={{
-                                        width: 36,
-                                        height: 36,
-                                        bgcolor: avatarColor,
-                                        fontWeight: 'bold',
-                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                                    }}
-                                >
-                                    {getInitials(user.name || user.email)}
-                                </Avatar>
+                                {profileImage ? (
+                                    <Avatar
+                                        src={profileImage}
+                                        sx={{
+                                            width: 36,
+                                            height: 36,
+                                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                                        }}
+                                    />
+                                ) : (
+                                    <Avatar
+                                        sx={{
+                                            width: 36,
+                                            height: 36,
+                                            bgcolor: avatarColor,
+                                            fontWeight: 'bold',
+                                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                                        }}
+                                    >
+                                        {getInitials(user.name || user.email)}
+                                    </Avatar>
+                                )}
                                 {!isMobile && (
                                     <Typography
                                         variant="body2"
@@ -294,9 +288,25 @@ const Layout = ({ children }) => {
                                 작업실 관리
                             </Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                                <Avatar sx={{ bgcolor: avatarColor, width: 48, height: 48 }}>
-                                    {getInitials(user?.name || user?.email)}
-                                </Avatar>
+                                {profileImage ? (
+                                    <Avatar
+                                        src={profileImage}
+                                        sx={{
+                                            width: 48,
+                                            height: 48,
+                                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
+                                        }}
+                                    />
+                                ) : (
+                                    <Avatar sx={{
+                                        bgcolor: avatarColor,
+                                        width: 48,
+                                        height: 48,
+                                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
+                                    }}>
+                                        {getInitials(user?.name || user?.email)}
+                                    </Avatar>
+                                )}
                                 <Box sx={{ ml: 2 }}>
                                     <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
                                         {user?.name || "사용자"}
@@ -351,7 +361,6 @@ const Layout = ({ children }) => {
                                 <ListItemIcon>
                                     <LogoutIcon color="error" />
                                 </ListItemIcon>
-                                // src/components/Layout.js (이어서)
                                 <ListItemText
                                     primary="로그아웃"
                                     primaryTypographyProps={{
