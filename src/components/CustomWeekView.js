@@ -3,6 +3,7 @@ import React, { forwardRef } from 'react';
 import { Box, Typography, IconButton } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
 import moment from 'moment';
 import 'moment/locale/ko';
 
@@ -15,6 +16,7 @@ const CustomWeekView = forwardRef(({
                                        onDayClick,
                                        onEventClick,
                                        onNavigateWeek,
+                                       onAddEvent,  // 날짜별 일정 추가
                                        isMobile
                                    }, ref) => {
     // 현재 주간의 시작일과 종료일 계산
@@ -74,6 +76,7 @@ const CustomWeekView = forwardRef(({
                     const dateStr = day.format('YYYY-MM-DD');
                     const dayEvents = eventsByDay[dateStr] || [];
                     const isToday = day.isSame(moment(), 'day');
+                    const isWeekend = day.day() === 0 || day.day() === 6; // 주말 체크
 
                     return (
                         <Box
@@ -83,72 +86,105 @@ const CustomWeekView = forwardRef(({
                                 backgroundColor: isToday ? 'rgba(25, 118, 210, 0.05)' : 'transparent',
                                 borderRadius: 1,
                                 border: isToday ? '1px solid rgba(25, 118, 210, 0.2)' : '1px solid #eee',
-                                cursor: 'pointer'
                             }}
-                            onClick={() => onDayClick(day)}
                         >
                             <Box
                                 sx={{
                                     py: 1,
                                     px: 2,
-                                    backgroundColor: isToday ? 'primary.main' : 'grey.100',
+                                    backgroundColor: isToday ? 'primary.main' : isWeekend ? 'grey.200' : 'grey.100',
                                     borderRadius: '4px 4px 0 0',
-                                    color: isToday ? 'white' : 'inherit',
+                                    color: isToday ? 'white' : isWeekend ? (day.day() === 0 ? 'error.main' : 'primary.main') : 'inherit',
                                     fontWeight: isToday ? 'bold' : 'normal',
-                                    fontSize: '0.9rem'
+                                    fontSize: '0.9rem',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
                                 }}
                             >
-                                {day.format('YYYY년 MM월 DD일 (ddd)')}
+                                {/* 날짜 표시 */}
+                                <Box
+                                    sx={{ cursor: 'pointer' }}
+                                    onClick={() => onDayClick(day)}
+                                >
+                                    {day.format('YYYY년 MM월 DD일 (ddd)')}
+                                </Box>
+
+                                {/* 추가 버튼 */}
+                                <IconButton
+                                    size="small"
+                                    color={isToday ? "default" : "primary"}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onAddEvent(day);
+                                    }}
+                                    sx={{
+                                        color: isToday ? 'white' : 'primary.main',
+                                        '&:hover': {
+                                            bgcolor: isToday ? 'rgba(255, 255, 255, 0.1)' : 'rgba(25, 118, 210, 0.1)'
+                                        }
+                                    }}
+                                >
+                                    <AddCircleIcon fontSize={isMobile ? "small" : "medium"} />
+                                </IconButton>
                             </Box>
 
-                            {dayEvents.length === 0 ? (
-                                <Box sx={{ p: 2, color: 'text.secondary', fontSize: '0.9rem' }}>
-                                    일정이 없습니다
-                                </Box>
-                            ) : (
-                                dayEvents
-                                    .sort((a, b) => moment(a.start).valueOf() - moment(b.start).valueOf())
-                                    .map((event, idx) => (
-                                        <Box
-                                            key={idx}
-                                            sx={{
-                                                p: 2,
-                                                borderBottom: idx < dayEvents.length - 1 ? '1px solid #eee' : 'none',
-                                                cursor: 'pointer',
-                                                '&:hover': {
-                                                    backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                                                }
-                                            }}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onEventClick(event);
-                                            }}
-                                        >
-                                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                                                <Box
-                                                    sx={{
-                                                        width: 10,
-                                                        height: 10,
-                                                        borderRadius: '50%',
-                                                        backgroundColor: event.color || defaultColor,
-                                                        mr: 1
-                                                    }}
-                                                />
-                                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                                                    {event.title}
+                            <Box
+                                sx={{
+                                    minHeight: '50px',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={() => onDayClick(day)}
+                            >
+                                {dayEvents.length === 0 ? (
+                                    <Box sx={{ p: 2, color: 'text.secondary', fontSize: '0.9rem' }}>
+                                        일정이 없습니다
+                                    </Box>
+                                ) : (
+                                    dayEvents
+                                        .sort((a, b) => moment(a.start).valueOf() - moment(b.start).valueOf())
+                                        .map((event, idx) => (
+                                            <Box
+                                                key={idx}
+                                                sx={{
+                                                    p: 2,
+                                                    borderBottom: idx < dayEvents.length - 1 ? '1px solid #eee' : 'none',
+                                                    cursor: 'pointer',
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                                    }
+                                                }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onEventClick(event);
+                                                }}
+                                            >
+                                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                                                    <Box
+                                                        sx={{
+                                                            width: 10,
+                                                            height: 10,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: event.color || defaultColor,
+                                                            mr: 1
+                                                        }}
+                                                    />
+                                                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                                        {event.title}
+                                                    </Typography>
+                                                </Box>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    {moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}
                                                 </Typography>
+                                                {event.userName && (
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        작성자: {event.userName}
+                                                    </Typography>
+                                                )}
                                             </Box>
-                                            <Typography variant="body2" color="text.secondary">
-                                                {moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}
-                                            </Typography>
-                                            {event.userName && (
-                                                <Typography variant="caption" color="text.secondary">
-                                                    작성자: {event.userName}
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    ))
-                            )}
+                                        ))
+                                )}
+                            </Box>
                         </Box>
                     );
                 })}
