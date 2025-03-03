@@ -8,13 +8,13 @@
       "type": "image/x-icon"
     },
     {
-      "src": "PDG-192.png",
+      "src": "pdgicon.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "PDG-512.png",
+      "src": "pdg.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
