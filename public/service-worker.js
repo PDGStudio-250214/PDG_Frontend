@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schedule-app-v1';
+const CACHE_NAME = 'schedule-app-v2'; // 캐시 이름 변경으로 이전 캐시 무효화
 const urlsToCache = [
     '/',
     '/index.html',
@@ -6,8 +6,8 @@ const urlsToCache = [
     '/static/js/0.chunk.js',
     '/static/js/bundle.js',
     '/manifest.json',
-    '/logo192.png',
-    '/logo512.png',
+    '/pdgicon.png',    // 새 아이콘 파일 추가
+    '/pdg.png',        // 새 아이콘 파일 추가
     '/favicon.ico'
 ];
 
@@ -19,6 +19,23 @@ self.addEventListener('install', event => {
                 console.log('Opened cache');
                 return cache.addAll(urlsToCache);
             })
+    );
+    // 새 서비스 워커가 즉시 활성화되도록 설정
+    self.skipWaiting();
+});
+
+// 이전 캐시 삭제
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
     );
 });
 

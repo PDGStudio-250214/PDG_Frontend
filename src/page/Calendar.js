@@ -1,4 +1,4 @@
-// src/pages/Calendar.js (보증금 정보 제거)
+// src/pages/Calendar.js
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import moment from 'moment';
 import 'moment/locale/ko';
@@ -18,7 +18,10 @@ import {
     Snackbar,
     Alert,
     ToggleButtonGroup,
-    ToggleButton
+    ToggleButton,
+    Button,
+    IconButton,
+    Tooltip
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import EventDialog from '../components/EventDialog';
@@ -29,6 +32,7 @@ import api from '../api/config';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { getUserColor } from '../utils/colorUtils';
+import { checkForAllMembersScheduled } from '../services/notificationService';
 
 // 한국어 설정
 moment.locale('ko');
@@ -46,6 +50,7 @@ const Calendar = () => {
     const [selectedMonth, setSelectedMonth] = useState(moment().month() + 1);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState('info');
 
     // 상세 페이지 관련 상태
     const [dayDetailOpen, setDayDetailOpen] = useState(false);
@@ -137,11 +142,18 @@ const Calendar = () => {
                     userName: userName,
                     userId: userId,
                     // 현재 로그인한 사용자가 작성한 일정인지 여부
-                    isOwner: userId === user?.id
+                    isOwner: userId === user?.id,
+                    userEmail: event.user?.email || event.userEmail
                 };
             });
 
             setEvents(formattedEvents);
+
+            // 로컬 스토리지에 일정 데이터 저장 (알림 기능에서 사용)
+            localStorage.setItem('pdg_schedules', JSON.stringify(formattedEvents));
+
+            // 모든 멤버가 출근하는 날 체크 (알림 서비스의 함수 호출)
+            checkForAllMembersScheduled();
         } catch (error) {
             console.error('일정 조회 중 오류 발생:', error.response?.data || error.message);
         }
@@ -240,6 +252,7 @@ const Calendar = () => {
                         color: getUserColor(user?.name),
                         userName: user?.name,
                         userId: user?.id,
+                        userEmail: user?.email,
                         isOwner: true
                     };
 
@@ -249,6 +262,9 @@ const Calendar = () => {
                     if (selectedDay && moment(eventData.start).isSame(selectedDay, 'day')) {
                         setDayEvents(prev => [...prev, newEvent]);
                     }
+
+                    // 일정 추가 후 모든 멤버 출근 체크 다시 수행
+                    checkForAllMembersScheduled();
                 }
             } else if (dialogMode === 'edit' && selectedEvent?.isOwner) {
                 // 기존 일정 수정 (자신이 작성한 일정만)
@@ -273,12 +289,16 @@ const Calendar = () => {
                 setDayEvents(prev => prev.map(event =>
                     event.id === selectedEvent.id ? updatedEvent : event
                 ));
+
+                // 일정 수정 후 모든 멤버 출근 체크 다시 수행
+                checkForAllMembersScheduled();
             }
 
             setDialogOpen(false);
         } catch (error) {
             console.error('일정 저장 중 오류 발생:', error.response?.data || error.message);
             setSnackbarMessage('일정 저장 중 오류가 발생했습니다.');
+            setSnackbarSeverity('error');
             setSnackbarOpen(true);
         }
     };
@@ -288,6 +308,7 @@ const Calendar = () => {
         // 현재 선택된 일정이 자신의 것인지 확인
         if (!selectedEvent?.isOwner) {
             setSnackbarMessage('다른 사용자의 일정은 삭제할 수 없습니다.');
+            setSnackbarSeverity('warning');
             setSnackbarOpen(true);
             return;
         }
@@ -304,10 +325,14 @@ const Calendar = () => {
             // 상세 페이지에 표시된 이벤트 목록도 업데이트
             setDayEvents(prev => prev.filter(event => event.id !== eventId));
 
+            // 일정 삭제 후 모든 멤버 출근 체크 다시 수행
+            checkForAllMembersScheduled();
+
             setDialogOpen(false);
         } catch (error) {
             console.error('일정 삭제 중 오류 발생:', error.response?.data || error.message);
             setSnackbarMessage('일정 삭제 중 오류가 발생했습니다.');
+            setSnackbarSeverity('error');
             setSnackbarOpen(true);
         }
     };
@@ -439,6 +464,29 @@ const Calendar = () => {
                         height: '100%',
                         overflow: 'hidden'
                     }}>
+                        {/* 월세 납부일(23일) 표시 */}
+                        {view === 'month' && (
+                            <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'flex-end',
+                                mb: 1,
+                                alignItems: 'center'
+                            }}>
+                                <Box
+                                    sx={{
+                                        width: 12,
+                                        height: 12,
+                                        bgcolor: 'error.main',
+                                        borderRadius: '50%',
+                                        mr: 1
+                                    }}
+                                />
+                                <Typography variant="caption" color="text.secondary">
+                                    월세 납부일 (매월 23일)
+                                </Typography>
+                            </Box>
+                        )}
+
                         {/* 뷰에 따른 컴포넌트 렌더링 */}
                         <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
                             {view === 'month' ? (
@@ -448,6 +496,7 @@ const Calendar = () => {
                                     onDateClick={handleDateClick}
                                     onEventClick={handleEventClick}
                                     isMobile={isMobile}
+                                    highlightRentDay={true} // 월세 납부일(23일) 강조 표시
                                 />
                             ) : (
                                 <CustomWeekView
@@ -458,6 +507,7 @@ const Calendar = () => {
                                     onNavigateWeek={navigateWeek}
                                     onAddEvent={handleAddEventForDay}
                                     isMobile={isMobile}
+                                    highlightRentDay={true} // 월세 납부일(23일) 강조 표시
                                     ref={weekViewRef}
                                 />
                             )}
@@ -498,7 +548,7 @@ const Calendar = () => {
                 >
                     <Alert
                         onClose={handleSnackbarClose}
-                        severity="info"
+                        severity={snackbarSeverity}
                         variant="filled"
                         sx={{ width: '100%' }}
                     >
