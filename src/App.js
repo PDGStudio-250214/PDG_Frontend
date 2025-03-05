@@ -40,7 +40,7 @@ const PrivateRoute = ({ children }) => {
 
 function App() {
     useEffect(() => {
-        // 서비스 워커 등록 확인
+        // 서비스 워커 등록 (로컬호스트 포함)
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/firebase-messaging-sw.js')
                 .then(registration => {
@@ -53,11 +53,15 @@ function App() {
 
         // 알림 권한 요청 및 리스너 설정
         const setupNotifications = async () => {
-            // 로그인 상태일 때만 알림 설정
             const token = localStorage.getItem('token');
             if (token) {
-                await requestNotificationPermission();
-                setupNotificationListener();
+                try {
+                    await requestNotificationPermission();
+                    setupNotificationListener();
+                } catch (error) {
+                    console.error('알림 설정 중 오류:', error);
+                    // 에러가 발생해도 앱 실행은 계속됨
+                }
             }
         };
 
