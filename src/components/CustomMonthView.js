@@ -9,14 +9,9 @@ const defaultColor = '#9C27B0';
 
 // 일정 타입별 색상 매핑
 const eventTypeColors = {
-    'MILLO': '#2196F3',  // 파란색
     '대체공휴일': '#F44336', // 빨간색
-    '독후감': '#4CAF50',    // 초록색
-    '메일링': '#FF9800',    // 주황색
     '예정': '#9C27B0',      // 보라색
     '삼일절': '#F44336',    // 빨간색
-    'AWS': '#FF5722',      // 주황-빨간색
-    '현차': '#2196F3',      // 파란색
 };
 
 const CustomMonthView = ({ date, events, onDateClick, onEventClick, isMobile }) => {
