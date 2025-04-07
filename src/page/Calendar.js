@@ -37,6 +37,25 @@ import { checkForAllMembersScheduled } from '../services/notificationService';
 // 한국어 설정
 moment.locale('ko');
 
+// 2025년 한국 공휴일 데이터
+const koreanHolidays2025 = [
+    { id: 'holiday-2025-01-01', title: '신정', start: new Date(2025, 0, 1), end: new Date(2025, 0, 1), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-02-01', title: '설날', start: new Date(2025, 1, 1), end: new Date(2025, 1, 1), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-02-02', title: '설날', start: new Date(2025, 1, 2), end: new Date(2025, 1, 2), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-02-03', title: '설날', start: new Date(2025, 1, 3), end: new Date(2025, 1, 3), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-03-01', title: '삼일절', start: new Date(2025, 2, 1), end: new Date(2025, 2, 1), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-05-05', title: '어린이날', start: new Date(2025, 4, 5), end: new Date(2025, 4, 5), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-05-08', title: '부처님오신날', start: new Date(2025, 4, 8), end: new Date(2025, 4, 8), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-06-06', title: '현충일', start: new Date(2025, 5, 6), end: new Date(2025, 5, 6), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-08-15', title: '광복절', start: new Date(2025, 7, 15), end: new Date(2025, 7, 15), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-09-19', title: '추석', start: new Date(2025, 8, 19), end: new Date(2025, 8, 19), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-09-20', title: '추석', start: new Date(2025, 8, 20), end: new Date(2025, 8, 20), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-09-21', title: '추석', start: new Date(2025, 8, 21), end: new Date(2025, 8, 21), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-10-03', title: '개천절', start: new Date(2025, 9, 3), end: new Date(2025, 9, 3), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-10-09', title: '한글날', start: new Date(2025, 9, 9), end: new Date(2025, 9, 9), allDay: true, isHoliday: true },
+    { id: 'holiday-2025-12-25', title: '크리스마스', start: new Date(2025, 11, 25), end: new Date(2025, 11, 25), allDay: true, isHoliday: true }
+];
+
 const Calendar = () => {
     const { user } = useAuth();
     const [events, setEvents] = useState([]);
@@ -93,12 +112,37 @@ const Calendar = () => {
         setCurrentDate(newDate);
     };
 
+    // 일정 스타일 커스터마이징
+    const eventStyleGetter = (event) => {
+        if (event.isHoliday) {
+            return {
+                style: {
+                    backgroundColor: '#FF5A5A',
+                    color: 'white',
+                    borderRadius: '4px',
+                    border: 'none',
+                    fontWeight: 'bold'
+                }
+            };
+        }
+
+        // 일반 일정의 경우 기존 색상 사용
+        return {
+            style: {
+                backgroundColor: event.color || '#3174ad',
+                borderRadius: '4px',
+            }
+        };
+    };
+
     // 일정 조회
     const fetchEvents = useCallback(async () => {
         try {
             const token = localStorage.getItem('token');
             if (!token) {
                 console.error('인증 토큰이 없습니다');
+                // 토큰이 없어도 공휴일은 표시
+                setEvents([...koreanHolidays2025]);
                 return;
             }
 
@@ -116,12 +160,15 @@ const Calendar = () => {
                 scheduleData = response.data.schedules;
             } else {
                 console.error('처리할 수 있는 일정 데이터 형식이 아닙니다');
+                // 데이터 형식 오류시에도 공휴일은 표시
+                setEvents([...koreanHolidays2025]);
                 return;
             }
 
             // 데이터가 있는지 확인
             if (scheduleData.length === 0) {
-                setEvents([]);
+                // 공휴일 데이터만 설정
+                setEvents([...koreanHolidays2025]);
                 return;
             }
 
@@ -147,7 +194,10 @@ const Calendar = () => {
                 };
             });
 
-            setEvents(formattedEvents);
+
+            // 공휴일 데이터와 사용자 일정 데이터 합치기
+            setEvents([...formattedEvents, ...koreanHolidays2025]);
+      
 
             // 로컬 스토리지에 일정 데이터 저장 (알림 기능에서 사용)
             localStorage.setItem('pdg_schedules', JSON.stringify(formattedEvents));
@@ -156,6 +206,8 @@ const Calendar = () => {
             checkForAllMembersScheduled();
         } catch (error) {
             console.error('일정 조회 중 오류 발생:', error.response?.data || error.message);
+            // 오류 발생 시에도 공휴일은 표시
+            setEvents([...koreanHolidays2025]);
         }
     }, [user]);
 
@@ -163,6 +215,9 @@ const Calendar = () => {
     useEffect(() => {
         if (user) {
             fetchEvents();
+        } else {
+            // 사용자가 로그인하지 않은 경우에도 공휴일은 표시
+            setEvents([...koreanHolidays2025]);
         }
     }, [user, fetchEvents]);
 
@@ -184,6 +239,14 @@ const Calendar = () => {
 
     // 일정 클릭 핸들러
     const handleEventClick = (event) => {
+        // 공휴일은 수정 불가 (보기만 가능)
+        if (event.isHoliday) {
+            setSelectedEvent(event);
+            setDialogMode('view');
+            setDialogOpen(true);
+            return;
+        }
+
         setSelectedEvent(event);
         setDialogMode(event.isOwner ? 'edit' : 'view');
         setDialogOpen(true);
@@ -256,7 +319,7 @@ const Calendar = () => {
                         isOwner: true
                     };
 
-                    setEvents(prev => [...prev, newEvent]);
+                    setEvents(prev => [...prev.filter(e => !e.isHoliday), newEvent, ...koreanHolidays2025]);
 
                     // 현재 상세 페이지에 표시된 이벤트 목록도 업데이트
                     if (selectedDay && moment(eventData.start).isSame(selectedDay, 'day')) {
@@ -281,9 +344,11 @@ const Calendar = () => {
                     end: new Date(eventData.end)
                 };
 
-                setEvents(prev => prev.map(event =>
-                    event.id === selectedEvent.id ? updatedEvent : event
-                ));
+                setEvents(prev => [
+                    ...prev.filter(event => event.id !== selectedEvent.id && !event.isHoliday),
+                    updatedEvent,
+                    ...koreanHolidays2025
+                ]);
 
                 // 상세 페이지에 표시된 이벤트 목록도 업데이트
                 setDayEvents(prev => prev.map(event =>
@@ -305,6 +370,13 @@ const Calendar = () => {
 
     // 일정 삭제 핸들러
     const handleDeleteEvent = async (eventId) => {
+        // 공휴일은 삭제 불가
+        if (selectedEvent?.isHoliday) {
+            setSnackbarMessage('공휴일은 삭제할 수 없습니다.');
+            setSnackbarOpen(true);
+            return;
+        }
+
         // 현재 선택된 일정이 자신의 것인지 확인
         if (!selectedEvent?.isOwner) {
             setSnackbarMessage('다른 사용자의 일정은 삭제할 수 없습니다.');
@@ -320,7 +392,7 @@ const Calendar = () => {
             });
 
             // 삭제된 일정을 상태에서 제거
-            setEvents(prev => prev.filter(event => event.id !== eventId));
+            setEvents(prev => [...prev.filter(event => event.id !== eventId && !event.isHoliday), ...koreanHolidays2025]);
 
             // 상세 페이지에 표시된 이벤트 목록도 업데이트
             setDayEvents(prev => prev.filter(event => event.id !== eventId));
@@ -496,7 +568,11 @@ const Calendar = () => {
                                     onDateClick={handleDateClick}
                                     onEventClick={handleEventClick}
                                     isMobile={isMobile}
+
+                                    eventStyleGetter={eventStyleGetter}
+
                                     highlightRentDay={true} // 월세 납부일(23일) 강조 표시
+
                                 />
                             ) : (
                                 <CustomWeekView
@@ -509,6 +585,7 @@ const Calendar = () => {
                                     isMobile={isMobile}
                                     highlightRentDay={true} // 월세 납부일(23일) 강조 표시
                                     ref={weekViewRef}
+                                    eventStyleGetter={eventStyleGetter}
                                 />
                             )}
                         </Box>
