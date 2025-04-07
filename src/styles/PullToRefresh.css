@@ -1,0 +1,48 @@
+/* src/styles/PullToRefresh.css */
+.pull-to-refresh {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    z-index: 9999;
+    background-color: #f0f6ff;
+    transition: height 0.2s ease;
+}
+
+.pull-to-refresh .refresh-icon {
+    position: absolute;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    transform: translateY(0) rotate(0deg);
+    transition: transform 0.2s ease;
+}
+
+.pull-to-refresh .refresh-icon svg {
+    fill: #1976d2; /* 맞춤 색상으로 변경 가능 */
+}
+
+.pull-to-refresh.ready .refresh-icon svg {
+    fill: #2196f3; /* 준비 상태일 때 색상 */
+}
+
+.pull-to-refresh.refreshing .refresh-icon {
+    transition: transform 0.5s ease;
+}
+
+.pull-to-refresh .refresh-icon.spin {
+    animation: spin 1s infinite linear;
+}
+
+@keyframes spin {
+    0% {
+        transform: translateY(30px) rotate(0deg);
+    }
+    100% {
+        transform: translateY(30px) rotate(360deg);
+    }
+}
